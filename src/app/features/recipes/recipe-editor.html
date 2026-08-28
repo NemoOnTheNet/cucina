@@ -68,8 +68,10 @@
       @for (ingredient of ingredients(); track $index) {
         <div class="ingredient-row">
           <input class="input name" type="text" placeholder="Ingrédient" list="catalogue"
+                 aria-label="Nom de l'ingrédient"
                  [value]="ingredient.name" (input)="patchIngredient($index, { name: inputValue($event) })" />
           <input class="input qty" type="number" inputmode="decimal" min="0" step="any" placeholder="Qté"
+                 aria-label="Quantité"
                  [value]="ingredient.quantity ?? ''" (input)="patchIngredient($index, { quantity: numberValue($event) })" />
           <select class="input unit" [value]="ingredient.unit ?? ''" (change)="onUnitChange($index, $event)"
                   aria-label="Unité">
@@ -81,6 +83,7 @@
           <button type="button" class="btn btn-quiet remove" (click)="removeIngredient($index)"
                   aria-label="Retirer cet ingrédient">✕</button>
           <input class="input note" type="text" placeholder="Précision (finement hachée…)"
+                 aria-label="Précision sur l'ingrédient"
                  [value]="ingredient.note" (input)="patchIngredient($index, { note: inputValue($event) })" />
         </div>
       }
@@ -123,6 +126,7 @@
       @for (utensil of utensils(); track $index) {
         <div class="row">
           <input class="input grow" type="text" placeholder="Robot, moule à cake…"
+                 aria-label="Ustensile"
                  [value]="utensil" (input)="patchUtensil($index, inputValue($event))" />
           <button type="button" class="btn btn-quiet" (click)="removeUtensil($index)"
                   aria-label="Retirer cet ustensile">✕</button>

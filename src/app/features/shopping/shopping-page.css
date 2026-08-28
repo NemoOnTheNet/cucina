@@ -10,7 +10,8 @@
 }
 
 .small-btn {
-  min-height: 38px;
+  /* La convention du projet impose 44 px : un bouton compact reste un bouton. */
+  min-height: var(--touch);
   padding: 0 var(--space-3);
   font-size: 0.85rem;
   flex-shrink: 0;
