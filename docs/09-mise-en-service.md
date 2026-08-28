@@ -82,10 +82,20 @@ Hors périmètre v1 : la distribution demande un compte développeur Apple à 99
 
 ## 3. Héberger la PWA
 
-Le build est statique. N'importe quel hébergeur statique convient (Netlify, Vercel, Cloudflare Pages, Firebase Hosting, Supabase Hosting).
+Le build est statique. N'importe quel hébergeur statique convient (Vercel, Netlify, Cloudflare Pages, Firebase Hosting).
 
 ```bash
 npm run build      # sortie : dist/cucina/browser
 ```
 
 Une seule contrainte : **rediriger toutes les routes inconnues vers `index.html`** (l'application gère son propre routage). Sans cette règle, ouvrir directement `/courses` renvoie un 404.
+
+### Vercel
+
+[`vercel.json`](../vercel.json) est déjà écrit : commande de build, dossier de sortie et redirection SPA. Il reste à importer le dépôt GitHub depuis [vercel.com/new](https://vercel.com/new) — Vercel lit le fichier et ne demande rien d'autre. Chaque `git push` sur `main` redéploie.
+
+Le fichier force aussi `Cache-Control: no-cache` sur `index.html`, `ngsw.json` et `ngsw-worker.js`. Ce n'est pas un détail : ces trois fichiers portent la version de l'application. Mis en cache, un téléphone continue de servir l'ancienne version longtemps après un déploiement, sans moyen de s'en apercevoir. Les autres fichiers ont un nom haché, ils peuvent être mis en cache indéfiniment.
+
+### Une adresse publique, un projet Supabase ouvert
+
+Une fois la PWA en ligne, n'importe qui peut créer un compte. C'est voulu, mais cela suppose que les deux manques connus soient acceptés : **pas de réinitialisation de mot de passe** et **pas de suppression de compte**. Voir [`08-questions-ouvertes.md`](08-questions-ouvertes.md).

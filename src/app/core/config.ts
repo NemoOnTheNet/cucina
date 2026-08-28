@@ -18,8 +18,9 @@ export interface AppConfig {
 export const APP_CONFIG = new InjectionToken<AppConfig>('APP_CONFIG');
 
 export const defaultConfig: AppConfig = {
-  supabaseUrl: null,
-  supabaseAnonKey: null,
+  supabaseUrl: 'https://dweocuewmljwqolaiguf.supabase.co',
+  supabaseAnonKey:
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3ZW9jdWV3bWxqd3FvbGFpZ3VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5MTc2NDEsImV4cCI6MjEwMzQ5MzY0MX0.D_LTJBcITM7-5h80rQBk2Vcd_9GWp24jf6tgo3b5lQU',
 };
 
 export function isSupabaseConfigured(config: AppConfig): boolean {
