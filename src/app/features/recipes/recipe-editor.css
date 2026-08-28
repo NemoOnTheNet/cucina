@@ -31,6 +31,13 @@ h1 {
   gap: var(--space-3);
 }
 
+/* L'échec porte sur la photo seule : il s'affiche sous le bloc concerné, pas en
+   bandeau d'erreur du formulaire — la recette, elle, reste enregistrable. */
+.photo-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+}
+
 .preview {
   width: 100%;
   aspect-ratio: 16 / 10;

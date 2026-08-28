@@ -5,7 +5,6 @@ import { CatalogStore } from '../../core/catalog/catalog.store';
 import { ToastStore } from '../../core/ui/toast.store';
 import type { Recipe, RecipeDetail } from '../../domain/models';
 import type { RecipeInput } from '../../data/backend';
-import { compressImage } from '../../shared/image';
 
 @Injectable({ providedIn: 'root' })
 export class RecipesStore {
@@ -94,10 +93,15 @@ export class RecipesStore {
     }
   }
 
-  /** Envoie une photo compressée et retourne son chemin de stockage. */
-  async uploadPhoto(recipeId: string, file: Blob): Promise<string> {
-    const compressed = await compressImage(file);
-    return this.backend.photos.upload(this.session.householdId(), recipeId, compressed);
+  /**
+   * Envoie une photo et retourne son chemin de stockage.
+   *
+   * Le redimensionnement a lieu à la sélection, dans l'écran : c'est là qu'on
+   * peut prévisualiser exactement ce qui partira, et refuser tout de suite un
+   * format que le navigateur ne sait pas lire.
+   */
+  async uploadPhoto(recipeId: string, photo: Blob): Promise<string> {
+    return this.backend.photos.upload(this.session.householdId(), recipeId, photo);
   }
 
   async photoUrl(path: string | null): Promise<string | null> {

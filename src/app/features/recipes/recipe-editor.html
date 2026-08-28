@@ -16,14 +16,21 @@
       <app-recipe-photo class="preview" [path]="photoPath()" [alt]="title()" />
     }
     <div class="photo-actions">
+      <!-- Pas d'attribut `capture` : il force l'appareil photo et retire l'accès
+           à la galerie. On photographie souvent une page de livre, mais on veut
+           tout aussi souvent reprendre une photo déjà prise. -->
       <label class="btn btn-ghost">
-        {{ photoPath() || pendingPhotoUrl() ? 'Changer la photo' : 'Ajouter une photo' }}
-        <input type="file" accept="image/*" capture="environment" class="sr-only" (change)="onPhotoSelected($event)" />
+        {{ photoBusy() ? 'Traitement…' : (photoPath() || pendingPhotoUrl() ? 'Changer la photo' : 'Ajouter une photo') }}
+        <input type="file" accept="image/*" class="sr-only" [disabled]="photoBusy()"
+               aria-label="Choisir une photo de la recette" (change)="onPhotoSelected($event)" />
       </label>
       @if (photoPath() || pendingPhotoUrl()) {
         <button type="button" class="btn btn-quiet" (click)="clearPhoto()">Retirer</button>
       }
     </div>
+    @if (photoError(); as message) {
+      <p class="photo-error">{{ message }}</p>
+    }
   </section>
 
   <div class="field">

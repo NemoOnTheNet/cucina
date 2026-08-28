@@ -5,6 +5,7 @@ import { ToastStore } from '../../core/ui/toast.store';
 import type { RecipeInput } from '../../data/backend';
 import { SELECTABLE_UNITS, unitLabel, type UnitId } from '../../domain/quantities';
 import { fileValue, inputValue, numberValue } from '../../shared/forms';
+import { UnreadableImageError, prepareRecipePhoto } from '../../shared/image';
 import { RecipePhoto } from './recipe-photo';
 import { RecipesStore } from './recipes.store';
 
@@ -46,8 +47,11 @@ export class RecipeEditor {
   protected readonly utensils = signal<string[]>([]);
 
   protected readonly photoPath = signal<string | null>(null);
-  protected readonly pendingPhoto = signal<File | null>(null);
+  /** Photo déjà redimensionnée et réorientée : c'est elle qu'on affiche ET qu'on envoie. */
+  protected readonly pendingPhoto = signal<Blob | null>(null);
   protected readonly pendingPhotoUrl = signal<string | null>(null);
+  protected readonly photoBusy = signal(false);
+  protected readonly photoError = signal<string | null>(null);
 
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
@@ -60,7 +64,9 @@ export class RecipeEditor {
 
   protected readonly catalogProducts = this.catalog.products;
   protected readonly isEdit = computed(() => this.id() !== undefined);
-  protected readonly canSave = computed(() => this.title().trim().length > 0 && !this.saving());
+  protected readonly canSave = computed(
+    () => this.title().trim().length > 0 && !this.saving() && !this.photoBusy(),
+  );
 
   constructor() {
     void this.hydrate();
@@ -165,21 +171,49 @@ export class RecipeEditor {
 
   // ── Photo ──────────────────────────────────────────────────
 
-  protected onPhotoSelected(event: Event): void {
+  /**
+   * La photo est préparée dès qu'elle est choisie, pas à l'enregistrement.
+   *
+   * Deux raisons. On prévisualise alors exactement ce qui sera envoyé — avant,
+   * le `<img>` orientait l'original via l'EXIF pendant qu'on enregistrait une
+   * version couchée. Et un format illisible se signale tout de suite, au lieu
+   * de faire échouer une recette qu'on croyait terminée.
+   */
+  protected async onPhotoSelected(event: Event): Promise<void> {
     const file = fileValue(event);
+    // Le champ est vidé tout de suite : sans cela, rechoisir LE MÊME fichier après
+    // une erreur ne déclenche aucun `change`, et l'écran paraît ne rien faire.
+    if (event.target instanceof HTMLInputElement) event.target.value = '';
     if (!file) return;
-    this.pendingPhoto.set(file);
+    this.photoError.set(null);
+    this.photoBusy.set(true);
+    try {
+      const prepared = await prepareRecipePhoto(file);
+      this.pendingPhoto.set(prepared);
+      this.swapPreview(URL.createObjectURL(prepared));
+    } catch (error) {
+      this.pendingPhoto.set(null);
+      this.swapPreview(null);
+      this.photoError.set(
+        error instanceof UnreadableImageError ? error.message : 'Cette photo n\'a pas pu être préparée.',
+      );
+    } finally {
+      this.photoBusy.set(false);
+    }
+  }
+
+  /** Remplace l'aperçu en libérant l'URL d'objet précédente. */
+  private swapPreview(url: string | null): void {
     const previous = this.pendingPhotoUrl();
     if (previous) URL.revokeObjectURL(previous);
-    this.pendingPhotoUrl.set(URL.createObjectURL(file));
+    this.pendingPhotoUrl.set(url);
   }
 
   protected clearPhoto(): void {
-    const previous = this.pendingPhotoUrl();
-    if (previous) URL.revokeObjectURL(previous);
-    this.pendingPhotoUrl.set(null);
+    this.swapPreview(null);
     this.pendingPhoto.set(null);
     this.photoPath.set(null);
+    this.photoError.set(null);
   }
 
   protected stepServings(delta: number): void {

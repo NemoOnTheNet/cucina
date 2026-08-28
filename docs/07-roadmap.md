@@ -70,7 +70,7 @@ PWA installable, cache hors ligne, build Android via Capacitor, icône, écran d
 | M2 — Liste de courses | ✅ | Faire de vraies courses avec |
 | M3 — Recettes | ✅ | Saisir les 10 recettes du foyer |
 | M4 — La semaine | ✅ | Planifier une vraie semaine |
-| M5 — Vraie app mobile | 🟡 | PWA installable ✅ · cache hors ligne ✅ · projet Android à générer (`npm run mobile:add:android`, demande le SDK) |
+| M5 — Vraie app mobile | 🟡 | PWA installable ✅ · cache hors ligne ✅ · photo fiabilisée ✅ · **application native reportée** (décision du 28 août 2026) |
 
 Ce qui **bloque une ouverture au-delà du foyer** :
 
@@ -82,7 +82,7 @@ Ce qui n'est **pas** fait, et qui est assumé :
 - **Écritures hors ligne** (L4.2) : l'app s'ouvre et se lit sans réseau, mais cocher un article demande la connexion dès que Supabase est branché. Chantier à part entière.
 - **Consultation des listes archivées** (L1.11) : les listes sont bien archivées, l'écran qui les affiche n'existe pas.
 - **Décocher des ingrédients avant l'envoi** (L3.6) : « j'ai déjà du riz » se corrige après coup, dans la liste.
-- **Appareil photo natif** (L5.3) : le champ fichier ouvre déjà l'appareil photo sur mobile ; le plugin Capacitor dédié n'est pas branché.
+- **Plugin appareil photo Capacitor** (L5.3) : écarté tant qu'il n'y a pas d'application native — sur le web il retombe sur le même champ fichier. Le chemin photo de la PWA, lui, a été fiabilisé (orientation, aperçu fidèle, formats illisibles signalés).
 - **iOS natif** (L5.4) : PWA uniquement.
 
 ---
