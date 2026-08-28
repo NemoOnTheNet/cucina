@@ -229,6 +229,38 @@ function toShoppingItem(row: Row): ShoppingItem {
   };
 }
 
+/**
+ * Message d'échec de connexion.
+ *
+ * Tout ramener à « e-mail ou mot de passe incorrect » était confortable et faux :
+ * une adresse non confirmée, une limite de débit ou une requête bloquée par une
+ * extension du navigateur donnaient exactement la même phrase. On ne peut pas
+ * diagnostiquer ce qu'on ne distingue pas. Seul le vrai mauvais mot de passe reste
+ * volontairement vague — dire laquelle des deux valeurs est fausse aiderait surtout
+ * celui qui essaie des adresses au hasard.
+ */
+function signInMessage(error: { code?: string; status?: number; message: string }): string {
+  switch (error.code) {
+    case 'invalid_credentials':
+      return 'E-mail ou mot de passe incorrect.';
+    case 'email_not_confirmed':
+      return "Adresse pas encore confirmée. Ouvre le mail d'inscription, puis réessaie.";
+    case 'over_request_rate_limit':
+    case 'over_email_send_rate_limit':
+      return 'Trop de tentatives. Réessaie dans quelques minutes.';
+    case 'user_banned':
+      return 'Ce compte est suspendu.';
+    default:
+      break;
+  }
+  // Ni statut ni code : la requête n'est jamais partie. Réseau coupé, ou bloquée
+  // par une extension — le cas qu'on ne voyait pas du tout jusqu'ici.
+  if (error.status === undefined || error.status === 0) {
+    return 'Connexion au serveur impossible. Vérifie ton réseau, ou une extension qui bloquerait la requête.';
+  }
+  return `Connexion impossible : ${error.message}`;
+}
+
 class SupabaseAuth implements AuthGateway {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -267,7 +299,7 @@ class SupabaseAuth implements AuthGateway {
 
   async signIn(email: string, password: string): Promise<AuthUser> {
     const { data, error } = await this.client.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) throw new Error('E-mail ou mot de passe incorrect.');
+    if (error) throw new Error(signInMessage(error));
     const metadata = data.user.user_metadata as Row;
     return {
       id: data.user.id,
