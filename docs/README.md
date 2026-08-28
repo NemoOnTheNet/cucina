@@ -24,3 +24,9 @@ Une décision structurante = un ADR. On ne réécrit pas un ADR accepté : on en
 - [ADR-0004 — État par signals, pas de NgRx](adr/0004-etat-signals.md)
 - [ADR-0005 — CSS natif, pas de framework UI](adr/0005-pas-de-framework-ui.md)
 - [ADR-0006 — Deux implémentations du backend : locale et Supabase](adr/0006-deux-backends.md)
+
+## Archive
+
+- [Première version du projet (juillet 2026)](archive/) — spec, backlog et réflexion
+  d'une Cucina en React / Express, abandonnée. Conservés pour le raisonnement,
+  sans aucune autorité sur le code actuel.
