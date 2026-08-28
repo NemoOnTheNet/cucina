@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { BACKEND } from '../../core/backend.provider';
 import { SessionStore } from '../../core/auth/session.store';
+import { HouseholdStore } from './household.store';
 import { ToastStore } from '../../core/ui/toast.store';
 import type { HouseholdInvite, HouseholdMember } from '../../domain/models';
 import { Sheet } from '../../shared/sheet';
@@ -16,16 +16,13 @@ import { inputValue } from '../../shared/forms';
 })
 export class HouseholdPage {
   protected readonly session = inject(SessionStore);
-  private readonly backend = inject(BACKEND);
+  protected readonly store = inject(HouseholdStore);
   private readonly toasts = inject(ToastStore);
   private readonly router = inject(Router);
 
-  protected readonly invites = signal<HouseholdInvite[]>([]);
   protected readonly renaming = signal(false);
   protected readonly draftName = signal('');
   protected readonly removing = signal<HouseholdMember | null>(null);
-  protected readonly busy = signal(false);
-  protected readonly isLocalBackend = this.backend.kind === 'local';
 
   constructor() {
     void this.refresh();
@@ -33,11 +30,7 @@ export class HouseholdPage {
 
   private async refresh(): Promise<void> {
     try {
-      await this.session.refreshMembers();
-      const household = this.session.household();
-      if (household && this.session.isOwner()) {
-        this.invites.set(await this.backend.households.activeInvites(household.id));
-      }
+      await this.store.refresh();
     } catch (error) {
       this.toasts.error(error);
     }
@@ -59,17 +52,10 @@ export class HouseholdPage {
   }
 
   protected async createInvite(): Promise<void> {
-    const household = this.session.household();
-    const user = this.session.user();
-    if (!household || !user || this.busy()) return;
-    this.busy.set(true);
     try {
-      const invite = await this.backend.households.createInvite(household.id, user.id);
-      this.invites.update((all) => [...all, invite]);
+      await this.store.createInvite();
     } catch (error) {
       this.toasts.error(error);
-    } finally {
-      this.busy.set(false);
     }
   }
 
@@ -85,8 +71,7 @@ export class HouseholdPage {
 
   protected async revoke(invite: HouseholdInvite): Promise<void> {
     try {
-      await this.backend.households.revokeInvite(invite.id);
-      this.invites.update((all) => all.filter((existing) => existing.id !== invite.id));
+      await this.store.revokeInvite(invite);
     } catch (error) {
       this.toasts.error(error);
     }
@@ -94,12 +79,10 @@ export class HouseholdPage {
 
   protected async confirmRemoveMember(): Promise<void> {
     const member = this.removing();
-    const household = this.session.household();
-    if (!member || !household) return;
+    if (!member) return;
     this.removing.set(null);
     try {
-      await this.backend.households.removeMember(household.id, member.userId);
-      await this.session.refreshMembers();
+      await this.store.removeMember(member);
       this.toasts.success(`${member.displayName} a été retiré du foyer.`);
     } catch (error) {
       this.toasts.error(error);

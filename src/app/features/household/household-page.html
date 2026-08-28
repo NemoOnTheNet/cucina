@@ -36,16 +36,16 @@
     <section class="block">
       <h2 class="section-title">Inviter quelqu'un</h2>
 
-      @if (isLocalBackend) {
+      @if (!store.sharingHosted) {
         <p class="notice">
           Cette installation fonctionne en <strong>mode local</strong> : les données restent sur cet appareil.
           Les invitations ne deviendront réellement utiles qu'une fois le foyer hébergé.
         </p>
       }
 
-      @if (invites().length > 0) {
+      @if (store.invites().length > 0) {
         <ul class="invites card">
-          @for (invite of invites(); track invite.id) {
+          @for (invite of store.invites(); track invite.id) {
             <li>
               <span class="code">{{ invite.code }}</span>
               <span class="small faint">{{ expiryLabel(invite) }}</span>
@@ -56,7 +56,7 @@
         </ul>
       }
 
-      <button type="button" class="btn btn-ghost btn-block" [disabled]="busy()" (click)="createInvite()">
+      <button type="button" class="btn btn-ghost btn-block" [disabled]="store.busy()" (click)="createInvite()">
         + Créer un code d'invitation
       </button>
       <p class="small faint">Le code est valable 7 jours et ne sert qu'une fois.</p>
@@ -76,7 +76,8 @@
 @if (renaming()) {
   <app-sheet title="Renommer le foyer" (closed)="renaming.set(false)">
     <div class="stack">
-      <input class="input" type="text" [value]="draftName()" (input)="draftName.set(inputValue($event))" />
+      <input class="input" type="text" aria-label="Nom du foyer"
+             [value]="draftName()" (input)="draftName.set(inputValue($event))" />
       <button type="button" class="btn btn-primary btn-block" (click)="rename()">Enregistrer</button>
     </div>
   </app-sheet>
