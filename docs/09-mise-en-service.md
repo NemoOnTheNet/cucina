@@ -10,7 +10,18 @@ Par défaut, Cucina tourne en **mode local** : tout fonctionne, mais les donnée
 
 Sur [supabase.com](https://supabase.com), crée un projet (offre gratuite, sans carte bancaire). Note l'**URL du projet** et la clé **anon / public** — *jamais* la clé `service_role`, qui ne doit exister nulle part dans ce dépôt.
 
-### b. Appliquer les migrations
+### b. Désactiver la confirmation d'e-mail
+
+Dans **Authentication → Providers → Email**, décocher **Confirm email**.
+
+Ce n'est pas un détail de confort. Tant que l'option est active, `signUp` rend un
+utilisateur mais **aucune session** : `auth.uid()` est nul en base, et la création
+du foyer échoue juste après l'inscription. L'application le détecte et le dit
+clairement, mais le compte reste inutilisable tant que l'adresse n'est pas
+confirmée. Gérer proprement ce parcours (mail de confirmation, retour dans l'app)
+reste à faire — voir [`08-questions-ouvertes.md`](08-questions-ouvertes.md).
+
+### c. Appliquer les migrations
 
 ```bash
 npx supabase link --project-ref <ref-du-projet>
@@ -20,11 +31,12 @@ npx supabase db push
 Cela applique, dans l'ordre :
 
 - `supabase/migrations/0001_initial.sql` — tables, contraintes, fonctions `create_household` / `accept_invite` / `invite_preview` ;
-- `supabase/migrations/0002_rls.sql` — RLS sur **toutes** les tables, bucket `recipe-photos` et ses politiques.
+- `supabase/migrations/0002_rls.sql` — RLS sur **toutes** les tables, bucket `recipe-photos` et ses politiques ;
+- `supabase/migrations/0003_realtime_and_hardening.sql` — publication Realtime sur la liste de courses, interdiction faite à un membre de modifier son propre rôle, politiques de photos tolérantes à un chemin mal formé.
 
 À défaut de CLI, coller les deux fichiers dans l'éditeur SQL de Supabase, dans cet ordre, produit le même résultat.
 
-### c. Renseigner la configuration
+### d. Renseigner la configuration
 
 Dans `src/app/core/config.ts` :
 
@@ -39,13 +51,14 @@ Au prochain démarrage, `provideBackend()` bascule seul sur `SupabaseBackend` (c
 
 > La clé `anon` est publique par construction — c'est RLS qui protège les données. Elle peut être commitée sans risque. La clé `service_role`, elle, ne doit jamais approcher ce dépôt.
 
-### d. Vérifier
+### e. Vérifier
 
 Trois contrôles qui valent tous les tests unitaires du monde :
 
 1. Créer un compte, créer un foyer, ajouter un article → l'article apparaît dans la table `shopping_items`.
 2. Créer un code d'invitation, l'accepter depuis un **second compte** → les deux voient la même liste.
 3. Depuis le second compte, tenter de lire les données d'un **troisième** foyer via l'API → doit retourner vide, pas une erreur : c'est RLS qui fait son travail.
+4. Les deux comptes côte à côte, sur la liste de courses : cocher un article sur l'un le coche sur l'autre en une seconde environ. Si rien ne bouge, la publication Realtime de la migration `0003` n'a pas été appliquée.
 
 ---
 
