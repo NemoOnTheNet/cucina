@@ -41,3 +41,11 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Capacitor — les projets natifs se régénèrent (npm run mobile:add:android)
+/android
+/ios
+
+# Supabase CLI
+/supabase/.temp
+/supabase/.branches
