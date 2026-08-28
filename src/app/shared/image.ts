@@ -7,7 +7,20 @@
 const MAX_WIDTH = 1200;
 const QUALITY = 0.82;
 
+/**
+ * Ne lève jamais : un format que le navigateur ne sait pas décoder (certains
+ * HEIC d'iPhone) rendrait sinon l'enregistrement de la recette impossible.
+ * Dans ce cas on envoie l'original — plus lourd, mais la recette est sauvée.
+ */
 export async function compressImage(file: Blob, maxWidth = MAX_WIDTH): Promise<Blob> {
+  try {
+    return await resize(file, maxWidth);
+  } catch {
+    return file;
+  }
+}
+
+async function resize(file: Blob, maxWidth: number): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const ratio = Math.min(1, maxWidth / bitmap.width);
   const width = Math.round(bitmap.width * ratio);

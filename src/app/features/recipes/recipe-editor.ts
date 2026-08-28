@@ -216,11 +216,17 @@ export class RecipeEditor {
       const existingId = this.id();
       let saved = existingId ? await this.store.update(existingId, input) : await this.store.create(input);
 
-      // La photo ne peut être envoyée qu'une fois l'identifiant connu.
+      // La photo ne peut être envoyée qu'une fois l'identifiant connu. Son échec
+      // ne doit pas emporter la recette : le texte saisi est le vrai contenu,
+      // la photo se rattrape depuis la fiche.
       const file = this.pendingPhoto();
       if (file) {
-        const path = await this.store.uploadPhoto(saved.id, file);
-        saved = await this.store.update(saved.id, { ...input, photoPath: path });
+        try {
+          const path = await this.store.uploadPhoto(saved.id, file);
+          saved = await this.store.update(saved.id, { ...input, photoPath: path });
+        } catch {
+          this.toasts.show('Recette enregistrée, mais la photo n\'a pas pu être envoyée.', 'info');
+        }
       }
 
       this.toasts.success(existingId ? 'Recette mise à jour.' : 'Recette créée.');
