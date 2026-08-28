@@ -447,6 +447,34 @@ export class LocalWeek implements WeekGateway {
   }
 }
 
+type StoredShoppingItem = Omit<ShoppingItem, 'sources'> & idb.Keyed;
+
+const SHOPPING_CHANNEL = 'cucina:shopping';
+
+/** Identifiant de liste touché par un lot, pour ne réveiller que les bons onglets. */
+function touchedListId(mutations: readonly ItemMutation[]): Uuid | null {
+  for (const mutation of mutations) {
+    if (mutation.kind === 'create' || mutation.kind === 'update') return mutation.item.shoppingListId;
+  }
+  return null;
+}
+
+function notifyShoppingChange(shoppingListId: Uuid | null): void {
+  if (typeof BroadcastChannel === 'undefined') return;
+  const channel = new BroadcastChannel(SHOPPING_CHANNEL);
+  channel.postMessage(shoppingListId);
+  channel.close();
+}
+
+function listenShoppingChange(shoppingListId: Uuid, onChange: () => void): () => void {
+  if (typeof BroadcastChannel === 'undefined') return () => undefined;
+  const channel = new BroadcastChannel(SHOPPING_CHANNEL);
+  channel.onmessage = (event: MessageEvent<Uuid | null>) => {
+    if (event.data === null || event.data === shoppingListId) onChange();
+  };
+  return () => channel.close();
+}
+
 export class LocalShopping implements ShoppingGateway {
   async activeList(householdId: Uuid): Promise<ShoppingList> {
     const [existing] = await idb.findWhere<ShoppingList & idb.Keyed>(
@@ -489,14 +517,33 @@ export class LocalShopping implements ShoppingGateway {
         await idb.remove('shopping_items', mutation.itemId);
         continue;
       }
+
+      // Un patch n'écrit que ses colonnes et laisse les origines intactes :
+      // même sémantique que côté Supabase, pour que les deux se comportent pareil.
+      if (mutation.kind === 'patch') {
+        const stored = await idb.getOne<StoredShoppingItem>('shopping_items', mutation.itemId);
+        if (!stored) continue;
+        await idb.put<StoredShoppingItem>('shopping_items', { ...stored, ...mutation.changes });
+        continue;
+      }
+
       const { sources, ...row } = mutation.item;
-      await idb.put<Omit<ShoppingItem, 'sources'> & idb.Keyed>('shopping_items', row);
+      await idb.put<StoredShoppingItem>('shopping_items', row);
       await idb.removeWhere<ShoppingItemSource & idb.Keyed>(
         'shopping_item_sources',
         (s) => s.shoppingItemId === mutation.item.id,
       );
       await idb.putMany<ShoppingItemSource & idb.Keyed>('shopping_item_sources', sources);
     }
+    notifyShoppingChange(touchedListId(mutations));
+  }
+
+  /**
+   * En local il n'y a pas d'autre membre, mais il y a d'autres onglets. Le même
+   * canal sert donc la même promesse à l'échelle de l'appareil.
+   */
+  watch(shoppingListId: Uuid, onChange: () => void): () => void {
+    return listenShoppingChange(shoppingListId, onChange);
   }
 
   async close(householdId: Uuid): Promise<ShoppingList> {

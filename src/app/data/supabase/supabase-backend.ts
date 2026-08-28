@@ -30,7 +30,7 @@ import type {
   WeekPlanRecipe,
 } from '../../domain/models';
 import { toUnitId, type UnitId } from '../../domain/quantities';
-import type { ItemMutation } from '../../domain/shopping-list';
+import type { ItemMutation, ItemPatch } from '../../domain/shopping-list';
 import type {
   AuthGateway,
   AuthUser,
@@ -252,7 +252,16 @@ class SupabaseAuth implements AuthGateway {
     });
     if (error) throw new Error(error.message);
     const user = data.user;
-    if (!user) throw new Error('Compte créé, mais session indisponible. Vérifie ta boîte mail.');
+    if (!user) throw new Error("La création du compte n'a pas abouti. Réessaie dans un instant.");
+    // Avec « Confirm email » activé (le défaut chez Supabase), `user` est bien
+    // renseigné mais `session` vaut null : `auth.uid()` serait nul en base et la
+    // création du foyer échouerait sur un « Authentification requise »
+    // incompréhensible. On le dit franchement plutôt que d'avancer à vide.
+    if (!data.session) {
+      throw new Error(
+        'Compte créé. Confirme ton adresse depuis le mail que tu viens de recevoir, puis connecte-toi.',
+      );
+    }
     return { id: user.id, email: user.email ?? email, displayName: displayName.trim() };
   }
 
@@ -608,6 +617,33 @@ class SupabaseWeek implements WeekGateway {
   }
 }
 
+function toItemRow(item: ShoppingItem): Row {
+  return {
+    id: item.id,
+    shopping_list_id: item.shoppingListId,
+    product_id: item.productId,
+    unit: item.unit,
+    quantity: item.quantity,
+    manual_quantity: item.manualQuantity,
+    added_manually: item.addedManually,
+    checked: item.checked,
+    checked_at: item.checkedAt,
+    note: item.note,
+  };
+}
+
+/** Traduit un patch du domaine en colonnes. Une clé absente n'est pas écrite. */
+function toPatchRow(changes: ItemPatch): Row {
+  const row: Row = {};
+  if ('checked' in changes) row['checked'] = changes.checked;
+  if ('checkedAt' in changes) row['checked_at'] = changes.checkedAt;
+  if ('note' in changes) row['note'] = changes.note;
+  if ('unit' in changes) row['unit'] = changes.unit;
+  if ('quantity' in changes) row['quantity'] = changes.quantity;
+  if ('manualQuantity' in changes) row['manual_quantity'] = changes.manualQuantity;
+  return row;
+}
+
 class SupabaseShopping implements ShoppingGateway {
   constructor(private readonly client: SupabaseClient) {}
 
@@ -641,41 +677,86 @@ class SupabaseShopping implements ShoppingGateway {
     });
   }
 
+  /**
+   * Un lot = trois requêtes, pas trois par ligne : une recette de douze
+   * ingrédients tenait en trente-six allers-retours séquentiels.
+   *
+   * Les `patch` n'écrivent que leurs colonnes et ne touchent jamais aux
+   * origines : cocher une case ne peut plus effacer la recette qu'un autre
+   * membre vient d'ajouter.
+   */
   async apply(mutations: readonly ItemMutation[]): Promise<void> {
-    for (const mutation of mutations) {
-      if (mutation.kind === 'delete') {
-        const { error } = await this.client.from('shopping_items').delete().eq('id', mutation.itemId);
-        if (error) throw new Error(error.message);
-        continue;
-      }
-      const item = mutation.item;
-      const { error } = await this.client.from('shopping_items').upsert({
-        id: item.id,
-        shopping_list_id: item.shoppingListId,
-        product_id: item.productId,
-        unit: item.unit,
-        quantity: item.quantity,
-        manual_quantity: item.manualQuantity,
-        added_manually: item.addedManually,
-        checked: item.checked,
-        checked_at: item.checkedAt,
-        note: item.note,
-      });
-      if (error) throw new Error(error.message);
+    const deletions = mutations.filter((m) => m.kind === 'delete').map((m) => m.itemId);
+    const writes = mutations.filter((m) => m.kind === 'create' || m.kind === 'update').map((m) => m.item);
+    const patches = mutations.filter((m) => m.kind === 'patch');
 
-      await this.client.from('shopping_item_sources').delete().eq('shopping_item_id', item.id);
-      if (item.sources.length > 0) {
-        const { error: sourceError } = await this.client.from('shopping_item_sources').insert(
-          item.sources.map((source) => ({
-            id: source.id,
-            shopping_item_id: item.id,
-            week_plan_recipe_id: source.weekPlanRecipeId,
-            quantity: source.quantity,
-          })),
-        );
-        if (sourceError) throw new Error(sourceError.message);
+    if (deletions.length > 0) {
+      const { error } = await this.client.from('shopping_items').delete().in('id', deletions);
+      if (error) throw new Error(`Suppression d'une ligne : ${error.message}`);
+    }
+
+    if (writes.length > 0) {
+      const { error } = await this.client.from('shopping_items').upsert(writes.map(toItemRow));
+      if (error) throw new Error(`Enregistrement de la liste : ${error.message}`);
+
+      // Seules ces lignes-là voient leurs origines réécrites, parce que ce sont
+      // les seules dont le domaine vient de les recalculer (règles R1 → R3).
+      const ids = writes.map((item) => item.id);
+      const cleared = await this.client.from('shopping_item_sources').delete().in('shopping_item_id', ids);
+      if (cleared.error) throw new Error(`Mise à jour des origines : ${cleared.error.message}`);
+
+      const sources = writes.flatMap((item) =>
+        item.sources.map((source) => ({
+          id: source.id,
+          shopping_item_id: item.id,
+          week_plan_recipe_id: source.weekPlanRecipeId,
+          quantity: source.quantity,
+        })),
+      );
+      if (sources.length > 0) {
+        const { error: sourceError } = await this.client.from('shopping_item_sources').insert(sources);
+        if (sourceError) throw new Error(`Mise à jour des origines : ${sourceError.message}`);
       }
     }
+
+    for (const patch of patches) {
+      const { error } = await this.client
+        .from('shopping_items')
+        .update(toPatchRow(patch.changes))
+        .eq('id', patch.itemId);
+      if (error) throw new Error(`Mise à jour d'une ligne : ${error.message}`);
+    }
+  }
+
+  /**
+   * Realtime sur la liste et ses origines. Postgres n'accepte de filtre que sur
+   * une colonne de la table écoutée : `shopping_item_sources` n'en a pas qui
+   * porte la liste, donc on l'écoute en entier — RLS ne laisse de toute façon
+   * passer que les lignes du foyer.
+   */
+  watch(shoppingListId: Uuid, onChange: () => void): () => void {
+    const channel = this.client
+      .channel(`shopping:${shoppingListId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'shopping_items',
+          filter: `shopping_list_id=eq.${shoppingListId}`,
+        },
+        () => onChange(),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'shopping_item_sources' },
+        () => onChange(),
+      )
+      .subscribe();
+
+    return () => {
+      void this.client.removeChannel(channel);
+    };
   }
 
   async close(householdId: Uuid): Promise<ShoppingList> {

@@ -116,6 +116,9 @@ export class WeekStore {
     if (this._busy()) return;
     this._busy.set(true);
     try {
+      // La liste d'abord : `removePlannedRecipe` lève désormais si rien n'a pu
+      // être enregistré. Retirer la recette avant aurait laissé des lignes
+      // rattachées à une recette disparue, avec un total figé pour toujours.
       const removed = await this.shopping.removePlannedRecipe(planned.id);
       await this.backend.week.removeRecipe(planned.id);
       this._planned.update((all) => all.filter((entry) => entry.id !== planned.id));

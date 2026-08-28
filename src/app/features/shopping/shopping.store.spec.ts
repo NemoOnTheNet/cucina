@@ -80,10 +80,21 @@ class FakeShopping implements ShoppingGateway {
         this.rows = this.rows.filter((row) => row.id !== mutation.itemId);
         continue;
       }
+      if (mutation.kind === 'patch') {
+        // Comme les vrais backends : seules les colonnes du patch sont écrites,
+        // les origines de la ligne restent celles que la « base » connaît.
+        const index = this.rows.findIndex((row) => row.id === mutation.itemId);
+        if (index !== -1) this.rows[index] = { ...this.rows[index], ...mutation.changes };
+        continue;
+      }
       const index = this.rows.findIndex((row) => row.id === mutation.item.id);
       if (index === -1) this.rows.push(mutation.item);
       else this.rows[index] = mutation.item;
     }
+  }
+
+  watch(): () => void {
+    return () => undefined;
   }
 
   async close(): Promise<ShoppingList> {
@@ -189,6 +200,33 @@ describe('ShoppingStore', () => {
     expect(store.total()).toBe(2);
     expect(store.remaining()).toBe(1);
     expect(store.allChecked()).toBe(false);
+  });
+
+  it('cocher depuis un écran périmé n\'efface pas la recette ajoutée entre-temps', async () => {
+    // L'écran affiche « Carottes, ajout manuel ».
+    await store.addManual('Carottes');
+    const carottes = backend.products.rows[0];
+    const stale = store.items()[0];
+
+    // Ailleurs — autre membre, autre appareil — une recette apporte 600 g.
+    const fresh = { ...backend.shopping.rows[0], sources: [...backend.shopping.rows[0].sources] };
+    fresh.sources.push({
+      id: 's-distante',
+      shoppingItemId: fresh.id,
+      weekPlanRecipeId: 'wpr-1',
+      quantity: 600,
+    });
+    fresh.quantity = 600;
+    backend.shopping.rows[0] = fresh;
+
+    // On coche sur l'écran resté ouvert, avec sa copie périmée.
+    await store.toggle(stale);
+
+    const stored = backend.shopping.rows[0];
+    expect(stored.checked).toBe(true);
+    expect(stored.sources).toHaveLength(1);
+    expect(stored.quantity).toBe(600);
+    expect(stored.productId).toBe(carottes.id);
   });
 
   it('archive la liste et repart d\'une liste vide', async () => {

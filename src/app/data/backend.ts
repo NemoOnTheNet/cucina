@@ -103,6 +103,14 @@ export interface ShoppingGateway {
   items(shoppingListId: Uuid): Promise<ShoppingItem[]>;
   /** Applique un lot de mutations calculé par le domaine. */
   apply(mutations: readonly ItemMutation[]): Promise<void>;
+  /**
+   * Prévient quand la liste change ailleurs — autre membre, autre appareil,
+   * autre onglet. Retourne la fonction qui coupe l'écoute.
+   *
+   * Sans cela, deux téléphones ouverts dans le même magasin travaillent chacun
+   * sur une photo périmée de la liste : c'est la promesse « partagée » qui tombe.
+   */
+  watch(shoppingListId: Uuid, onChange: () => void): () => void;
   /** Archive la liste courante et en ouvre une vide. */
   close(householdId: Uuid): Promise<ShoppingList>;
   archivedLists(householdId: Uuid): Promise<ShoppingList[]>;

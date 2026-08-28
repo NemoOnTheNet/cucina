@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { BACKEND } from '../../core/backend.provider';
 import { SessionStore } from '../../core/auth/session.store';
 import { CatalogStore } from '../../core/catalog/catalog.store';
@@ -9,10 +9,10 @@ import type { ShoppingItem, ShoppingList } from '../../domain/models';
 import type { UnitId } from '../../domain/quantities';
 import {
   addNeeds,
+  annotateItem,
+  checkItem,
   removeRecipeContribution,
-  setManualTotal,
-  setUnit,
-  toggleChecked,
+  retotalItem,
   type ItemMutation,
   type Need,
 } from '../../domain/shopping-list';
@@ -34,6 +34,12 @@ export class ShoppingStore {
   private readonly session = inject(SessionStore);
   private readonly catalog = inject(CatalogStore);
   private readonly toasts = inject(ToastStore);
+  private readonly destroyRef = inject(DestroyRef);
+
+  /** Coupe l'écoute de la liste précédente quand on en ouvre une autre. */
+  private unwatch: (() => void) | null = null;
+  /** Rechargement provoqué par nos propres écritures : à ignorer. */
+  private selfWriteUntil = 0;
 
   private readonly _list = signal<ShoppingList | null>(null);
   private readonly _items = signal<ShoppingItem[]>([]);
@@ -74,6 +80,10 @@ export class ShoppingStore {
       .sort((a, b) => categoryOrder(a.category.id) - categoryOrder(b.category.id));
   });
 
+  constructor() {
+    this.destroyRef.onDestroy(() => this.unwatch?.());
+  }
+
   /** Charge la liste si ce n'est pas déjà fait : la semaine peut avoir besoin
    * d'y écrire alors que l'écran des courses n'a jamais été ouvert. */
   async ensureLoaded(): Promise<void> {
@@ -88,6 +98,7 @@ export class ShoppingStore {
       const list = await this.backend.shopping.activeList(this.session.householdId());
       this._list.set(list);
       this._items.set(await this.backend.shopping.items(list.id));
+      this.watch(list.id);
     } catch (error) {
       this._error.set(error instanceof Error ? error.message : 'Liste indisponible.');
     } finally {
@@ -117,7 +128,8 @@ export class ShoppingStore {
 
     const change = addNeeds(this._items(), needs, list.id, newId);
     this._items.set(change.items);
-    await this.persist(change.mutations);
+    // L'échec remonte : la semaine ne doit pas se croire à jour si la liste ne l'est pas.
+    await this.persistOrThrow(change.mutations);
     return { created: change.created, merged: change.merged };
   }
 
@@ -126,16 +138,16 @@ export class ShoppingStore {
     await this.ensureLoaded();
     const change = removeRecipeContribution(this._items(), weekPlanRecipeId);
     this._items.set(change.items);
-    await this.persist(change.mutations);
+    await this.persistOrThrow(change.mutations);
     return change.removed;
   }
 
   /** Cocher est l'action la plus fréquente : elle est optimiste, jamais bloquée par le réseau. */
   async toggle(item: ShoppingItem): Promise<void> {
-    const updated = toggleChecked(item);
-    this.replace(updated);
+    const change = checkItem(item);
+    this.replace(change.item);
     try {
-      await this.backend.shopping.apply([{ kind: 'update', item: updated }]);
+      await this.write([change.mutation]);
     } catch (error) {
       this.replace(item);
       this.toasts.error(error);
@@ -143,16 +155,15 @@ export class ShoppingStore {
   }
 
   async setTotal(item: ShoppingItem, total: number | null, unit: UnitId | null): Promise<void> {
-    const withUnit = unit === item.unit ? item : setUnit(item, unit);
-    const updated = setManualTotal(withUnit, total);
-    this.replace(updated);
-    await this.persist([{ kind: 'update', item: updated }]);
+    const change = retotalItem(item, total, unit);
+    this.replace(change.item);
+    await this.persist([change.mutation]);
   }
 
   async setNote(item: ShoppingItem, note: string): Promise<void> {
-    const updated: ShoppingItem = { ...item, note: note.trim() === '' ? null : note.trim() };
-    this.replace(updated);
-    await this.persist([{ kind: 'update', item: updated }]);
+    const change = annotateItem(item, note);
+    this.replace(change.item);
+    await this.persist([change.mutation]);
   }
 
   /** Suppression annulable : on ne perd jamais une ligne sur un geste mal maîtrisé. */
@@ -172,6 +183,7 @@ export class ShoppingStore {
       const next = await this.backend.shopping.close(this.session.householdId());
       this._list.set(next);
       this._items.set([]);
+      this.watch(next.id);
       this.toasts.success('Courses terminées. Nouvelle liste ouverte.');
     } catch (error) {
       this.toasts.error(error);
@@ -187,15 +199,62 @@ export class ShoppingStore {
     this._items.update((all) => all.map((existing) => (existing.id === item.id ? item : existing)));
   }
 
+  /** Persiste et signale l'échec à l'écran, sans le propager à l'appelant. */
   private async persist(mutations: readonly ItemMutation[]): Promise<void> {
-    if (mutations.length === 0) return;
     try {
-      await this.backend.shopping.apply(mutations);
+      await this.persistOrThrow(mutations);
     } catch (error) {
       this.toasts.error(error);
-      // La source de vérité reste la base : on recharge plutôt que de laisser
-      // l'écran afficher un état que personne n'a enregistré.
+    }
+  }
+
+  /**
+   * Persiste, et laisse l'erreur remonter. La source de vérité reste la base :
+   * en cas d'échec on recharge plutôt que de laisser l'écran afficher un état
+   * que personne n'a enregistré.
+   */
+  private async persistOrThrow(mutations: readonly ItemMutation[]): Promise<void> {
+    if (mutations.length === 0) return;
+    try {
+      await this.write(mutations);
+    } catch (error) {
       await this.load();
+      throw error;
+    }
+  }
+
+  /**
+   * Toute écriture passe ici. La fenêtre de garde évite qu'une notification
+   * temps réel déclenchée par nos propres écritures ne relance un rechargement.
+   */
+  private async write(mutations: readonly ItemMutation[]): Promise<void> {
+    this.selfWriteUntil = Date.now() + SELF_WRITE_WINDOW_MS;
+    await this.backend.shopping.apply(mutations);
+    this.selfWriteUntil = Date.now() + SELF_WRITE_WINDOW_MS;
+  }
+
+  /** (Re)branche l'écoute temps réel sur la liste active. */
+  private watch(shoppingListId: string): void {
+    this.unwatch?.();
+    this.unwatch = this.backend.shopping.watch(shoppingListId, () => void this.onRemoteChange());
+  }
+
+  private async onRemoteChange(): Promise<void> {
+    if (Date.now() < this.selfWriteUntil) return;
+    const list = this._list();
+    if (!list) return;
+    try {
+      this._items.set(await this.backend.shopping.items(list.id));
+    } catch {
+      // Une notification ratée n'est pas une erreur à montrer : le prochain
+      // changement, ou la prochaine ouverture de l'écran, remettra tout d'aplomb.
     }
   }
 }
+
+/**
+ * Nos propres écritures reviennent par le canal temps réel. On les ignore
+ * pendant ce court laps de temps, sinon chaque case cochée provoquerait un
+ * rechargement complet de la liste.
+ */
+const SELF_WRITE_WINDOW_MS = 1500;

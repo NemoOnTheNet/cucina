@@ -91,6 +91,23 @@ Composant ──action──▶ Store (signals) ──▶ Repository ──▶ S
 - Les règles métier ne vivent **jamais** dans un composant ni dans un store : elles sont appelées depuis `domain/`.
 - Mise à jour **optimiste** sur les actions fréquentes (cocher un article) : on met à jour le signal immédiatement, on envoie derrière, on annule visuellement si ça échoue. En magasin, attendre le réseau pour voir une case se cocher est inacceptable.
 
+## Écritures concurrentes sur la liste
+
+Deux personnes peuvent tenir la même liste ouverte en même temps. Deux mécanismes s'en occupent, et ils vont ensemble.
+
+**Des écritures ciblées.** Le contrat distingue deux natures de mutation :
+
+| Mutation | Émise par | Écrit |
+|---|---|---|
+| `create` / `update` | les règles R1 → R3 (`addNeeds`, `removeRecipeContribution`) | la ligne **et** ses origines, que le domaine vient de recalculer |
+| `patch` | les actions locales (`checkItem`, `annotateItem`, `retotalItem`) | **uniquement** les colonnes de l'action |
+
+Cocher une case n'a rien à dire des recettes qui alimentent la ligne. Envoyer la ligne entière depuis un écran resté ouvert effacerait la recette qu'un autre membre vient d'ajouter — c'est de la perte de données, pas un affichage périmé.
+
+**Une écoute temps réel.** `ShoppingGateway.watch()` prévient quand la liste change ailleurs et le store recharge. Côté Supabase, c'est Realtime (publication déclarée dans la migration `0003`) ; côté local, un `BroadcastChannel` qui couvre les onglets du même appareil. Le store ignore ses propres écritures pendant une courte fenêtre, sinon chaque case cochée déclencherait un rechargement.
+
+Ce que cela ne fait pas : il n'y a **pas** de résolution de conflit. Deux personnes qui modifient la même ligne à la seconde près, c'est le dernier qui écrit qui gagne. Assumé pour un foyer.
+
 ## Hors ligne
 
 Position v1 assumée : **l'app s'ouvre hors ligne en lecture, les écritures nécessitent le réseau.**
