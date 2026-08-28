@@ -1,0 +1,42 @@
+# Configuration du projet Supabase distant.
+#
+# Poussée avec `supabase config push`. Attention : cette commande envoie le bloc
+# [auth] en entier — un champ absent est remplacé par la valeur par défaut du CLI,
+# pas laissé tel quel. Tout ce qui a été réglé dans le tableau de bord doit donc
+# figurer ici, sous peine d'être écrasé silencieusement.
+
+project_id = "cucina"
+
+[auth]
+enabled = true
+
+# L'adresse de production. C'est vers elle que pointent les liens de confirmation
+# d'e-mail : laissée sur le défaut (localhost), une personne qui s'inscrit valide
+# bien son compte mais atterrit sur une page morte.
+site_url = "https://cucina-nu.vercel.app"
+
+# Toutes les routes de l'application sont des destinations légitimes après une
+# redirection d'authentification. Le motif reste limité à ce domaine.
+additional_redirect_urls = ["https://cucina-nu.vercel.app/**"]
+
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+
+[auth.email]
+enable_signup = true
+
+# Choix assumé : on garde la confirmation d'adresse. Elle empêche les inscriptions
+# avec des adresses inventées, au prix d'un aller-retour par la boîte mail — que
+# l'écran d'inscription explique désormais. Le défaut du CLI est `false` : ne pas
+# écrire cette ligne suffirait à désactiver la confirmation sans s'en apercevoir.
+enable_confirmations = true
+
+double_confirm_changes = true
+secure_password_change = true
+max_frequency = "1m"
+otp_length = 6
+otp_expiry = 3600
