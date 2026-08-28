@@ -1,0 +1,153 @@
+<form class="page" (submit)="save($event)">
+  <div class="spread">
+    <h1>{{ isEdit() ? 'Modifier la recette' : 'Nouvelle recette' }}</h1>
+    <a class="btn btn-quiet" routerLink="/recettes">Annuler</a>
+  </div>
+
+  @if (error(); as message) {
+    <p class="error-banner">{{ message }}</p>
+  }
+
+  <!-- Photo -->
+  <section class="photo-block">
+    @if (pendingPhotoUrl(); as preview) {
+      <img class="preview" [src]="preview" alt="Aperçu de la photo choisie" />
+    } @else {
+      <app-recipe-photo class="preview" [path]="photoPath()" [alt]="title()" />
+    }
+    <div class="photo-actions">
+      <label class="btn btn-ghost">
+        {{ photoPath() || pendingPhotoUrl() ? 'Changer la photo' : 'Ajouter une photo' }}
+        <input type="file" accept="image/*" capture="environment" class="sr-only" (change)="onPhotoSelected($event)" />
+      </label>
+      @if (photoPath() || pendingPhotoUrl()) {
+        <button type="button" class="btn btn-quiet" (click)="clearPhoto()">Retirer</button>
+      }
+    </div>
+  </section>
+
+  <div class="field">
+    <label for="title">Titre</label>
+    <input id="title" class="input" type="text" required placeholder="Curry de légumes"
+           [value]="title()" (input)="title.set(inputValue($event))" />
+  </div>
+
+  <div class="field">
+    <label for="description">Description</label>
+    <textarea id="description" class="input" rows="2" placeholder="En deux mots…"
+              [value]="description()" (input)="description.set(inputValue($event))"></textarea>
+  </div>
+
+  <div class="field">
+    <label>Portions de référence</label>
+    <div class="servings">
+      <button type="button" class="btn btn-ghost" (click)="stepServings(-1)" aria-label="Moins de portions">−</button>
+      <span class="value">{{ servings() }}</span>
+      <button type="button" class="btn btn-ghost" (click)="stepServings(1)" aria-label="Plus de portions">+</button>
+    </div>
+    <span class="small faint">C'est la base du calcul des quantités quand tu planifies la recette.</span>
+  </div>
+
+  <div class="row">
+    <div class="field grow">
+      <label for="prep">Préparation (min)</label>
+      <input id="prep" class="input" type="number" inputmode="numeric" min="0"
+             [value]="prepMinutes() ?? ''" (input)="prepMinutes.set(numberValue($event))" />
+    </div>
+    <div class="field grow">
+      <label for="cook">Cuisson (min)</label>
+      <input id="cook" class="input" type="number" inputmode="numeric" min="0"
+             [value]="cookMinutes() ?? ''" (input)="cookMinutes.set(numberValue($event))" />
+    </div>
+  </div>
+
+  <!-- Ingrédients -->
+  <section>
+    <h2 class="section-title">Ingrédients</h2>
+    <div class="rows">
+      @for (ingredient of ingredients(); track $index) {
+        <div class="ingredient-row">
+          <input class="input name" type="text" placeholder="Ingrédient" list="catalogue"
+                 [value]="ingredient.name" (input)="patchIngredient($index, { name: inputValue($event) })" />
+          <input class="input qty" type="number" inputmode="decimal" min="0" step="any" placeholder="Qté"
+                 [value]="ingredient.quantity ?? ''" (input)="patchIngredient($index, { quantity: numberValue($event) })" />
+          <select class="input unit" [value]="ingredient.unit ?? ''" (change)="onUnitChange($index, $event)"
+                  aria-label="Unité">
+            <option value="">—</option>
+            @for (unit of units; track unit) {
+              <option [value]="unit">{{ unitLabel(unit) }}</option>
+            }
+          </select>
+          <button type="button" class="btn btn-quiet remove" (click)="removeIngredient($index)"
+                  aria-label="Retirer cet ingrédient">✕</button>
+          <input class="input note" type="text" placeholder="Précision (finement hachée…)"
+                 [value]="ingredient.note" (input)="patchIngredient($index, { note: inputValue($event) })" />
+        </div>
+      }
+    </div>
+    <datalist id="catalogue">
+      @for (product of catalogProducts(); track product.id) {
+        <option [value]="product.name"></option>
+      }
+    </datalist>
+    <button type="button" class="btn btn-ghost btn-block" (click)="addIngredient()">+ Ingrédient</button>
+  </section>
+
+  <!-- Étapes -->
+  <section>
+    <h2 class="section-title">Préparation</h2>
+    <div class="rows">
+      @for (step of steps(); track $index) {
+        <div class="step-row">
+          <span class="index" aria-hidden="true">{{ $index + 1 }}</span>
+          <textarea class="input" rows="2" placeholder="Décris l'étape…"
+                    [value]="step" (input)="patchStep($index, inputValue($event))"></textarea>
+          <div class="step-actions">
+            <button type="button" class="btn btn-quiet" (click)="moveStep($index, -1)" [disabled]="$first"
+                    aria-label="Monter l'étape">↑</button>
+            <button type="button" class="btn btn-quiet" (click)="moveStep($index, 1)" [disabled]="$last"
+                    aria-label="Descendre l'étape">↓</button>
+            <button type="button" class="btn btn-quiet" (click)="removeStep($index)"
+                    aria-label="Supprimer l'étape">✕</button>
+          </div>
+        </div>
+      }
+    </div>
+    <button type="button" class="btn btn-ghost btn-block" (click)="addStep()">+ Étape</button>
+  </section>
+
+  <!-- Ustensiles -->
+  <section>
+    <h2 class="section-title">Ustensiles</h2>
+    <div class="rows">
+      @for (utensil of utensils(); track $index) {
+        <div class="row">
+          <input class="input grow" type="text" placeholder="Robot, moule à cake…"
+                 [value]="utensil" (input)="patchUtensil($index, inputValue($event))" />
+          <button type="button" class="btn btn-quiet" (click)="removeUtensil($index)"
+                  aria-label="Retirer cet ustensile">✕</button>
+        </div>
+      }
+    </div>
+    <button type="button" class="btn btn-ghost btn-block" (click)="addUtensil()">+ Ustensile</button>
+  </section>
+
+  <div class="field">
+    <label for="tags">Tags</label>
+    <input id="tags" class="input" type="text" placeholder="végé, rapide, four"
+           [value]="tagsText()" (input)="tagsText.set(inputValue($event))" />
+    <span class="small faint">Séparés par des virgules.</span>
+  </div>
+
+  <div class="field">
+    <label for="source">Source</label>
+    <input id="source" class="input" type="text" placeholder="Un lien, un livre, une personne…"
+           [value]="source()" (input)="source.set(inputValue($event))" />
+  </div>
+
+  <div class="save-bar">
+    <button type="submit" class="btn btn-primary btn-block" [disabled]="!canSave()">
+      {{ saving() ? 'Enregistrement…' : isEdit() ? 'Enregistrer les modifications' : 'Créer la recette' }}
+    </button>
+  </div>
+</form>

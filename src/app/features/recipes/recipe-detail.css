@@ -1,0 +1,156 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: 0 var(--space-4) var(--space-6);
+}
+
+.hero {
+  width: calc(100% + 2 * var(--space-4));
+  margin-left: calc(-1 * var(--space-4));
+  aspect-ratio: 16 / 10;
+  max-height: 300px;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.actions .btn {
+  text-decoration: none;
+}
+
+.section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: var(--space-3);
+}
+
+.ingredients {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ingredients li {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ingredients li:last-child {
+  border-bottom: none;
+}
+
+.quantity {
+  min-width: 5.5rem;
+  font-weight: 700;
+  color: var(--brand);
+  font-variant-numeric: tabular-nums;
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.steps li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.index {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.footer-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.footer-actions .btn {
+  flex: 1;
+  text-decoration: none;
+}
+
+/* Mode cuisine : tout grossit, on lit à 60 cm du plan de travail. */
+.cooking .steps {
+  font-size: 1.25rem;
+  line-height: 1.6;
+  gap: var(--space-5);
+}
+
+.cooking .ingredients {
+  font-size: 1.1rem;
+}
+
+.cooking .index {
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+}
+
+.servings {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-5);
+}
+
+.servings .btn {
+  width: 56px;
+  font-size: 1.4rem;
+}
+
+.servings .value {
+  font-size: 2rem;
+  font-weight: 700;
+  min-width: 3ch;
+  text-align: center;
+}
+
+.skeleton {
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.skeleton.hero { aspect-ratio: 16 / 10; }
+.skeleton.line { height: 22px; }
+.skeleton.line.short { width: 55%; }
+
+@keyframes pulse {
+  50% { opacity: 0.55; }
+}

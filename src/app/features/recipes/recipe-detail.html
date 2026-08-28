@@ -1,0 +1,129 @@
+@if (loading()) {
+  <div class="page">
+    <div class="skeleton hero"></div>
+    <div class="skeleton line"></div>
+    <div class="skeleton line short"></div>
+  </div>
+} @else if (missing()) {
+  <div class="empty-state">
+    <span class="emoji" aria-hidden="true">🕳️</span>
+    <h2>Recette introuvable</h2>
+    <a class="btn btn-ghost" routerLink="/recettes">Retour aux recettes</a>
+  </div>
+} @else if (recipe(); as recipe) {
+  <article class="page" [class.cooking]="cooking()">
+    <app-recipe-photo class="hero" [path]="recipe.photoPath" [alt]="recipe.title" />
+
+    <header class="stack">
+      <h1>{{ recipe.title }}</h1>
+      <div class="meta">
+        <span class="chip">🍽️ {{ recipe.servings }} {{ recipe.servings > 1 ? "portions" : "portion" }}</span>
+        @if (totalMinutes() > 0) {
+          <span class="chip">⏱️ {{ totalMinutes() }} min</span>
+        }
+        @for (tag of recipe.tags; track tag) {
+          <span class="chip">{{ tag }}</span>
+        }
+      </div>
+      @if (recipe.description) {
+        <p class="muted">{{ recipe.description }}</p>
+      }
+    </header>
+
+    <div class="actions">
+      @if (week.isPlanned(recipe.id)) {
+        <a class="btn btn-ghost btn-block" routerLink="/semaine">✓ Déjà dans la semaine</a>
+      } @else {
+        <button type="button" class="btn btn-primary btn-block" (click)="planning.set(true)">
+          Ajouter à la semaine
+        </button>
+      }
+      <button type="button" class="btn btn-ghost btn-block" (click)="toggleCooking()">
+        {{ cooking() ? 'Quitter le mode cuisine' : '👩‍🍳 Mode cuisine' }}
+      </button>
+    </div>
+
+    @if (recipe.utensils.length > 0) {
+      <section>
+        <h2 class="section-title">Ustensiles</h2>
+        <div class="meta">
+          @for (utensil of recipe.utensils; track utensil.id) {
+            <span class="chip">{{ utensil.name }}</span>
+          }
+        </div>
+      </section>
+    }
+
+    <section>
+      <h2 class="section-title">Ingrédients</h2>
+      @if (recipe.ingredients.length === 0) {
+        <p class="muted small">Aucun ingrédient renseigné.</p>
+      } @else {
+        <ul class="ingredients">
+          @for (ingredient of recipe.ingredients; track ingredient.id) {
+            <li>
+              <span class="quantity">{{ quantityOf(ingredient) || '—' }}</span>
+              <span class="ingredient-name">
+                {{ productName(ingredient) }}
+                @if (ingredient.note) {
+                  <span class="faint small">, {{ ingredient.note }}</span>
+                }
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+
+    <section>
+      <h2 class="section-title">Préparation</h2>
+      @if (recipe.steps.length === 0) {
+        <p class="muted small">Aucune étape renseignée.</p>
+      } @else {
+        <ol class="steps">
+          @for (step of recipe.steps; track step.id) {
+            <li>
+              <span class="index" aria-hidden="true">{{ step.position + 1 }}</span>
+              <p>{{ step.text }}</p>
+            </li>
+          }
+        </ol>
+      }
+    </section>
+
+    @if (recipe.source) {
+      <p class="small faint">Source : {{ recipe.source }}</p>
+    }
+
+    <footer class="footer-actions">
+      <a class="btn btn-ghost" [routerLink]="['/recettes', recipe.id, 'modifier']">Modifier</a>
+      <button type="button" class="btn btn-danger" (click)="confirmingDelete.set(true)">Supprimer</button>
+    </footer>
+  </article>
+
+  @if (planning()) {
+    <app-sheet [title]="recipe.title" (closed)="planning.set(false)">
+      <div class="stack">
+        <p class="muted small">Pour combien de personnes ?</p>
+        <div class="servings">
+          <button type="button" class="btn btn-ghost" (click)="step(-1)" aria-label="Moins de portions">−</button>
+          <span class="value">{{ servings() }}</span>
+          <button type="button" class="btn btn-ghost" (click)="step(1)" aria-label="Plus de portions">+</button>
+        </div>
+        <button type="button" class="btn btn-primary btn-block" [disabled]="week.busy()" (click)="addToWeek()">
+          Ajouter à la semaine
+        </button>
+      </div>
+    </app-sheet>
+  }
+
+  @if (confirmingDelete()) {
+    <app-sheet title="Supprimer cette recette ?" (closed)="confirmingDelete.set(false)">
+      <div class="stack">
+        <p class="muted">Cette action est définitive. Les articles déjà dans la liste de courses n'en seront pas retirés.</p>
+        <button type="button" class="btn btn-danger btn-block" (click)="remove()">Supprimer définitivement</button>
+        <button type="button" class="btn btn-ghost btn-block" (click)="confirmingDelete.set(false)">Annuler</button>
+      </div>
+    </app-sheet>
+  }
+}
