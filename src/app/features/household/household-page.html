@@ -1,0 +1,96 @@
+<div class="page">
+  <h1>Foyer</h1>
+
+  <section class="card block">
+    <div class="spread">
+      <div>
+        <p class="label">Nom du foyer</p>
+        <p class="value">{{ session.household()?.name }}</p>
+      </div>
+      @if (session.isOwner()) {
+        <button type="button" class="btn btn-ghost small-btn" (click)="openRename()">Renommer</button>
+      }
+    </div>
+  </section>
+
+  <section class="block">
+    <h2 class="section-title">Membres</h2>
+    <ul class="members card">
+      @for (member of session.members(); track member.userId) {
+        <li>
+          <span class="avatar" aria-hidden="true">{{ member.displayName.charAt(0).toUpperCase() }}</span>
+          <span class="member-info">
+            <span class="member-name">{{ member.displayName }}</span>
+            <span class="small faint">{{ member.role === 'owner' ? 'Gérant du foyer' : 'Membre' }}</span>
+          </span>
+          @if (session.isOwner() && member.userId !== session.user()?.id) {
+            <button type="button" class="btn btn-quiet" (click)="removing.set(member)"
+                    [attr.aria-label]="'Retirer ' + member.displayName">✕</button>
+          }
+        </li>
+      }
+    </ul>
+  </section>
+
+  @if (session.isOwner()) {
+    <section class="block">
+      <h2 class="section-title">Inviter quelqu'un</h2>
+
+      @if (isLocalBackend) {
+        <p class="notice">
+          Cette installation fonctionne en <strong>mode local</strong> : les données restent sur cet appareil.
+          Les invitations ne deviendront réellement utiles qu'une fois le foyer hébergé.
+        </p>
+      }
+
+      @if (invites().length > 0) {
+        <ul class="invites card">
+          @for (invite of invites(); track invite.id) {
+            <li>
+              <span class="code">{{ invite.code }}</span>
+              <span class="small faint">{{ expiryLabel(invite) }}</span>
+              <button type="button" class="btn btn-quiet" (click)="copyCode(invite.code)">Copier</button>
+              <button type="button" class="btn btn-quiet" (click)="revoke(invite)" aria-label="Révoquer">✕</button>
+            </li>
+          }
+        </ul>
+      }
+
+      <button type="button" class="btn btn-ghost btn-block" [disabled]="busy()" (click)="createInvite()">
+        + Créer un code d'invitation
+      </button>
+      <p class="small faint">Le code est valable 7 jours et ne sert qu'une fois.</p>
+    </section>
+  }
+
+  <section class="block">
+    <h2 class="section-title">Compte</h2>
+    <div class="card block-inner">
+      <p class="value">{{ session.user()?.displayName }}</p>
+      <p class="small faint">{{ session.user()?.email }}</p>
+    </div>
+    <button type="button" class="btn btn-ghost btn-block" (click)="signOut()">Se déconnecter</button>
+  </section>
+</div>
+
+@if (renaming()) {
+  <app-sheet title="Renommer le foyer" (closed)="renaming.set(false)">
+    <div class="stack">
+      <input class="input" type="text" [value]="draftName()" (input)="draftName.set(inputValue($event))" />
+      <button type="button" class="btn btn-primary btn-block" (click)="rename()">Enregistrer</button>
+    </div>
+  </app-sheet>
+}
+
+@if (removing(); as member) {
+  <app-sheet title="Retirer ce membre ?" (closed)="removing.set(null)">
+    <div class="stack">
+      <p class="muted">
+        {{ member.displayName }} n'aura plus accès aux recettes, à la semaine ni à la liste de courses du foyer.
+        Le contenu qu'il a créé reste en place.
+      </p>
+      <button type="button" class="btn btn-danger btn-block" (click)="confirmRemoveMember()">Retirer du foyer</button>
+      <button type="button" class="btn btn-ghost btn-block" (click)="removing.set(null)">Annuler</button>
+    </div>
+  </app-sheet>
+}

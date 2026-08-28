@@ -1,0 +1,114 @@
+.page {
+  padding: var(--space-4) var(--space-4) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.block-inner,
+.card.block {
+  padding: var(--space-4);
+}
+
+.section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.label {
+  font-size: 0.8rem;
+  color: var(--text-faint);
+}
+
+.value {
+  font-weight: 600;
+}
+
+.small-btn {
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  font-size: 0.85rem;
+}
+
+.members,
+.invites {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.members li,
+.invites li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.members li:last-child,
+.invites li:last-child {
+  border-bottom: none;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  font-weight: 700;
+}
+
+.member-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.member-name {
+  font-weight: 600;
+}
+
+/* Le code tient une ligne à lui seul : espacé comme ça, il ne partage pas
+   la largeur avec la date d'expiration sans devenir illisible. */
+.invites li {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  grid-template-areas:
+    'code code code'
+    'expiry copy revoke';
+  gap: var(--space-2) var(--space-3);
+  align-items: center;
+}
+
+.code {
+  grid-area: code;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  font-variant-numeric: tabular-nums;
+}
+
+.invites li > .faint { grid-area: expiry; }
+
+.notice {
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
