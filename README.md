@@ -1,59 +1,55 @@
-# Cucina
+# 🍅 Cucina
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.0.
+**Les recettes de la semaine remplissent la liste de courses toutes seules.**
 
-## Development server
+Application mobile de gestion de recettes et de courses, partagée à l'échelle d'un **foyer** : on choisit les recettes de la semaine, leurs ingrédients atterrissent dans la liste de courses, et on y ajoute tout le reste du panier — de la carotte au papier toilette.
 
-To start a local development server, run:
+> État : **application fonctionnelle de bout en bout.** Comptes, foyer et invitations, recettes, semaine, liste de courses, PWA installable.
+> Elle tourne par défaut en **mode local** (données sur l'appareil, aucun service distant). Pour partager entre membres du foyer : [docs/09 — Mise en service](docs/09-mise-en-service.md).
 
-```bash
-ng serve
-```
+## Le produit en trois écrans
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+| Courses | Semaine | Recettes |
+|---|---|---|
+| La liste active du foyer, groupée par rayon, cochable d'un pouce en magasin. | Les recettes choisies pour la semaine — sans jour ni repas imposés. | Le carnet du foyer : ingrédients, étapes, ustensiles, photo. |
 
-## Code scaffolding
+## Stack
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+- **Angular 21** standalone, zoneless, signals
+- **Capacitor** pour l'empaquetage mobile (PWA aujourd'hui, Android ensuite)
+- **Supabase** : Postgres + RLS, Auth, Storage
+- **Vitest** pour les tests
 
-```bash
-ng generate component component-name
-```
+Les pourquoi sont dans les [ADR](docs/adr/).
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+## Démarrer
 
 ```bash
-ng build
+npm install
+npm start
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+L'application est disponible sur `http://localhost:4200/` — crée un compte, crée ton foyer, et c'est parti. Rien d'autre à configurer.
 
 ```bash
-ng test
+npm run build    # build de production (dist/cucina/browser)
+npm test         # 54 tests unitaires
 ```
 
-## Running end-to-end tests
+## Ce qui est en place
 
-For end-to-end (e2e) testing, run:
+- **Courses** — ajout en un champ avec autocomplétion, rayon deviné automatiquement, groupement par parcours en magasin, cocher/décocher, quantités, balayage pour supprimer avec annulation, clôture et archivage.
+- **Recettes** — création complète (photo compressée, ingrédients, étapes réordonnables, ustensiles, tags), recherche, mode cuisine (texte agrandi, écran maintenu allumé).
+- **Semaine** — panier de recettes sans jour ni repas, portions ajustables, propagation automatique vers la liste, retrait propre.
+- **Foyer** — comptes, gérant, codes d'invitation à 7 jours, membres.
+- **Mobile** — PWA installable, thème clair/sombre, zones sûres iOS, Capacitor prêt pour Android.
 
-```bash
-ng e2e
-```
+## Les règles qui font le produit
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Six règles gouvernent la liste de courses (fusion, retrait, quantités manuelles). Elles vivent dans `src/app/domain/`, **sans aucune dépendance à Angular ni à Supabase**, et sont couvertes par des tests. Elles sont décrites dans [docs/02 — Domaine](docs/02-domaine.md).
 
-## Additional Resources
+## Documentation
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Tout le cadrage est dans [`docs/`](docs/README.md) — vision, domaine et règles métier, fonctionnalités, architecture, modèle de données, conventions, feuille de route.
+
+Point d'entrée recommandé : [`docs/README.md`](docs/README.md).
