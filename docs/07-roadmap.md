@@ -87,6 +87,28 @@ Ce qui n'est **pas** fait, et qui est assumé :
 
 ---
 
+### M6 — Les listes libres du foyer  *(prochaine évolution retenue)*
+
+Une zone où le foyer garde ses autres listes : cadeaux, choses à faire, idées de sorties. Détail en [L6](03-fonctionnalites.md#l6--listes-libres-du-foyer-après-la-v1).
+
+À garder en tête : un concept **séparé** de la liste de courses. Les règles R1→R6 ne s'appliquent pas à une liste de cadeaux, et généraliser `shopping_lists` alourdirait le cœur de l'app pour rien.
+
+**Fini quand** : le foyer tient une vraie liste — de cadeaux, de travaux — dans l'app plutôt que dans une note de téléphone.
+
+---
+
+### M7 — Partage de recettes  *(prochaine évolution retenue, à cadrer)*
+
+« Passe-moi ta recette de curry » sans capture d'écran. Détail et cadrage en [L7](03-fonctionnalites.md#l7--partage-de-recettes-après-la-v1-et-à-cadrer).
+
+⚠️ Ce jalon rouvre un non-objectif de [`01-vision.md`](01-vision.md) (« pas de recettes publiques »). Il demande donc **une décision produit avant tout code** : export/import entre personnes, ou envoi d'un foyer à un autre. Le catalogue public reste refusé.
+
+Contrainte : le partage **copie** la recette, il ne donne jamais à un foyer un droit de lecture sur les données d'un autre. L'isolation par RLS ne se troue pas pour du confort.
+
+**Fini quand** : une recette est passée d'un foyer à un autre, et le destinataire peut la modifier sans que l'original bouge.
+
+---
+
 ### Ensuite (non engagé)
 
-Écritures hors ligne (outbox), temps réel entre membres, semaines passées, suggestions de produits récurrents, ordre des rayons par magasin, iOS/TestFlight, ouverture au-delà du foyer de test.
+Écritures hors ligne (outbox), semaines passées, suggestions de produits récurrents, ordre des rayons par magasin, iOS/TestFlight, application native Android, ouverture au-delà du foyer de test.

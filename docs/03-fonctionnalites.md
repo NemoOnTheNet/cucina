@@ -105,6 +105,41 @@ Légende : **[V1]** = indispensable au premier usage réel · **[V1.1]** = juste
 
 ---
 
+## L6 — Listes libres du foyer  *(après la v1)*
+
+Un foyer ne partage pas que des courses : une liste de cadeaux, des choses à faire, des idées de sorties. Aujourd'hui tout cela finit dans une note de téléphone que personne d'autre ne voit — exactement le problème que l'app résout déjà pour les courses.
+
+| # | Histoire | Priorité |
+|---|---|---|
+| L6.1 | Je crée une liste libre dans le foyer, avec un nom et une icône. | Plus tard |
+| L6.2 | J'y ajoute des lignes en texte libre, je les coche, je les supprime. | Plus tard |
+| L6.3 | Les autres membres voient la liste et ses changements en temps réel. | Plus tard |
+| L6.4 | J'archive une liste terminée sans la perdre. | Plus tard |
+| L6.5 | Je réordonne mes listes, ou j'en épingle une. | Plus tard |
+
+**Décision d'architecture à prendre avant d'écrire la moindre ligne.** La tentation sera de généraliser `shopping_lists`. C'est probablement une erreur : les règles R1→R6 — fusion par produit, unités, quantités venues des recettes, origines — n'ont **aucun sens** pour une liste de cadeaux. Les faire cohabiter chargerait le cœur de l'app de conditions inutiles, au mépris du principe 1 (« la liste de courses est le cœur »).
+
+Piste à privilégier : un concept **séparé et volontairement pauvre** — une liste, des lignes de texte, un état coché. Pas de produit, pas d'unité, pas de catalogue. Ce qu'elles partageront avec la liste de courses, c'est le foyer, la RLS et le temps réel, pas le domaine.
+
+---
+
+## L7 — Partage de recettes  *(après la v1, et à cadrer)*
+
+⚠️ **Ce lot rouvre un non-objectif de [`01-vision.md`](01-vision.md)** : « pas de réseau social, pas de recettes publiques ». Il n'est recevable que si l'on choisit explicitement *lequel* des trois partages ci-dessous on veut. Les mélanger, c'est glisser vers le réseau social sans l'avoir décidé.
+
+| # | Histoire | Priorité | Rouvre le non-objectif ? |
+|---|---|---|---|
+| L7.1 | J'exporte une recette (fichier ou lien) pour l'envoyer par le moyen de mon choix. | Plus tard | Non |
+| L7.2 | J'importe une recette reçue : elle est **copiée** dans mon foyer, et m'appartient. | Plus tard | Non |
+| L7.3 | J'envoie une recette à un autre foyer que je connais, depuis l'app. | Plus tard | Partiellement |
+| L7.4 | Je publie une recette visible par tous, avec des « j'aime » et des abonnements. | **Refusé** | Oui, entièrement |
+
+**Recommandation** : L7.1 + L7.2. Elles couvrent le besoin réel — « passe-moi ta recette de curry » — sans rien construire qui ressemble à une plateforme, sans modération à assurer, et sans changer la nature du produit.
+
+**Contrainte technique non négociable.** Les recettes sont cloisonnées par foyer, et [ADR-0002](adr/0002-supabase.md) fait reposer cette isolation sur RLS. Un partage ne doit **jamais** donner à un foyer un droit de lecture sur les lignes d'un autre : ce serait percer la garantie d'isolation pour une fonctionnalité de confort. Le partage **copie**, il ne partage pas la ligne. Une recette reçue est une nouvelle recette, dans le foyer qui la reçoit, modifiable sans effet sur l'original.
+
+---
+
 ## Périmètre V1 en une phrase
 
 > Un foyer, ses membres, ses recettes, une semaine de recettes, une liste de courses qui se remplit toute seule et qu'on coche en magasin — installable sur l'écran d'accueil.
