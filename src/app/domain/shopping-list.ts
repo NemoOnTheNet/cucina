@@ -18,9 +18,23 @@ export interface Need {
   readonly weekPlanRecipeId: Uuid | null;
 }
 
+/**
+ * Champs qu'une action locale peut modifier seule, sans toucher aux origines.
+ *
+ * Cocher une case ne dit rien des recettes qui alimentent la ligne : réécrire la
+ * ligne entière depuis un écran resté ouvert effacerait ce qu'un autre membre y
+ * a ajouté entre-temps. Un `patch` n'écrit que les colonnes qu'il possède.
+ */
+export type ItemPatch = Partial<
+  Pick<ShoppingItem, 'checked' | 'checkedAt' | 'note' | 'unit' | 'quantity' | 'manualQuantity'>
+>;
+
 export type ItemMutation =
   | { readonly kind: 'create'; readonly item: ShoppingItem }
+  /** Réécriture complète, origines comprises : réservée aux règles R1 → R3. */
   | { readonly kind: 'update'; readonly item: ShoppingItem }
+  /** Écriture ciblée : ne touche jamais aux origines de la ligne. */
+  | { readonly kind: 'patch'; readonly itemId: Uuid; readonly changes: ItemPatch }
   | { readonly kind: 'delete'; readonly itemId: Uuid };
 
 export interface ListChange {
@@ -219,15 +233,49 @@ export function setManualTotal(item: ShoppingItem, total: number | null): Shoppi
   return withRecomputedQuantity({ ...item, manualQuantity: manual });
 }
 
-/** Change l'unité d'une ligne saisie à la main (les contributions restent inchangées). */
-export function setUnit(item: ShoppingItem, unit: UnitId | null): ShoppingItem {
-  const canonical = canonicalize({ value: null, unit });
-  return { ...item, unit: canonical.unit };
+/**
+ * Actions locales sur une ligne : cocher, annoter, fixer un total.
+ *
+ * Chacune retourne la ligne à afficher ET l'écriture minimale correspondante.
+ * C'est le domaine qui sait quelles colonnes une action possède — le store ne
+ * fait que persister ce qu'on lui rend.
+ */
+export interface ItemChange {
+  readonly item: ShoppingItem;
+  readonly mutation: ItemMutation;
 }
 
-export function toggleChecked(item: ShoppingItem, now: () => string = () => new Date().toISOString()): ShoppingItem {
+function patchOf(item: ShoppingItem, changes: ItemPatch): ItemChange {
+  return { item: { ...item, ...changes }, mutation: { kind: 'patch', itemId: item.id, changes } };
+}
+
+/** R5 — cocher / décocher. N'affecte ni les quantités ni les origines. */
+export function checkItem(item: ShoppingItem, now: () => string = () => new Date().toISOString()): ItemChange {
   const checked = !item.checked;
-  return { ...item, checked, checkedAt: checked ? now() : null };
+  return patchOf(item, { checked, checkedAt: checked ? now() : null });
+}
+
+export function annotateItem(item: ShoppingItem, note: string): ItemChange {
+  const trimmed = note.trim();
+  return patchOf(item, { note: trimmed === '' ? null : trimmed });
+}
+
+/**
+ * R4 — l'utilisateur fixe le total affiché, éventuellement dans une autre unité.
+ * Seules les trois colonnes concernées sont écrites : les origines restent
+ * celles que la base connaît, même si l'écran est resté ouvert un moment.
+ */
+export function retotalItem(item: ShoppingItem, total: number | null, unit: UnitId | null): ItemChange {
+  // Le total est saisi DANS l'unité choisie : « 1 » + « kg » vaut 1000 g, pas 1 g.
+  // Sans cette conversion, changer l'unité d'une ligne divisait sa quantité par mille.
+  const canonical = canonicalize({ value: total, unit });
+  const withUnit = canonical.unit === item.unit ? item : { ...item, unit: canonical.unit };
+  const updated = setManualTotal(withUnit, canonical.value);
+  return patchOf(item, {
+    unit: updated.unit,
+    quantity: updated.quantity,
+    manualQuantity: updated.manualQuantity,
+  });
 }
 
 /** Quantité affichable d'une ligne. */

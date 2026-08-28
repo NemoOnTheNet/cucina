@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import type { ShoppingItem, Uuid } from './models';
 import {
   addNeeds,
+  annotateItem,
+  checkItem,
   needsFromPlannedRecipe,
   recomputeQuantity,
   removeRecipeContribution,
+  retotalItem,
   setManualTotal,
-  toggleChecked,
   type Need,
 } from './shopping-list';
 
@@ -260,10 +262,10 @@ describe('R4 — le manuel est intouchable', () => {
 
 describe('cocher / décocher', () => {
   it('cocher horodate, décocher efface l\'horodatage', () => {
-    const checked = toggleChecked(item(), () => '2026-08-26T10:00:00.000Z');
+    const checked = checkItem(item(), () => '2026-08-26T10:00:00.000Z').item;
     expect(checked.checked).toBe(true);
     expect(checked.checkedAt).toBe('2026-08-26T10:00:00.000Z');
-    expect(toggleChecked(checked).checkedAt).toBeNull();
+    expect(checkItem(checked).item.checkedAt).toBeNull();
   });
 });
 
@@ -280,5 +282,90 @@ describe('recomputeQuantity', () => {
       ],
     });
     expect(recomputeQuantity(mixed)).toBe(400);
+  });
+});
+
+describe('actions locales sur une ligne', () => {
+  const base: ShoppingItem = {
+    id: 'i-1',
+    shoppingListId: 'l-1',
+    productId: 'p-1',
+    unit: 'g',
+    quantity: 600,
+    manualQuantity: null,
+    addedManually: false,
+    checked: false,
+    checkedAt: null,
+    note: null,
+    sources: [{ id: 's-1', shoppingItemId: 'i-1', weekPlanRecipeId: 'wpr-1', quantity: 600 }],
+  };
+
+  it('cocher n\'écrit que « checked » et sa date', () => {
+    const change = checkItem(base, () => '2026-01-01T10:00:00.000Z');
+
+    expect(change.mutation).toEqual({
+      kind: 'patch',
+      itemId: 'i-1',
+      changes: { checked: true, checkedAt: '2026-01-01T10:00:00.000Z' },
+    });
+    expect(change.item.checked).toBe(true);
+  });
+
+  it('décocher efface la date', () => {
+    const change = checkItem({ ...base, checked: true, checkedAt: '2026-01-01T10:00:00.000Z' });
+
+    expect(change.mutation).toEqual({
+      kind: 'patch',
+      itemId: 'i-1',
+      changes: { checked: false, checkedAt: null },
+    });
+  });
+
+  it('aucune action locale ne touche aux origines de la ligne', () => {
+    for (const change of [checkItem(base), annotateItem(base, 'bio'), retotalItem(base, 800, 'g')]) {
+      expect(change.mutation.kind).toBe('patch');
+      if (change.mutation.kind === 'patch') {
+        expect(change.mutation.changes).not.toHaveProperty('sources');
+      }
+      expect(change.item.sources).toEqual(base.sources);
+    }
+  });
+
+  it('une note vide redevient « pas de note »', () => {
+    expect(annotateItem(base, '   ').mutation).toEqual({
+      kind: 'patch',
+      itemId: 'i-1',
+      changes: { note: null },
+    });
+    expect(annotateItem(base, '  bio  ').item.note).toBe('bio');
+  });
+
+  it('fixer un total déduit la part humaine sans écraser celle des recettes (R4)', () => {
+    const change = retotalItem(base, 800, 'g');
+
+    expect(change.item.quantity).toBe(800);
+    expect(change.item.manualQuantity).toBe(200);
+    expect(change.mutation).toEqual({
+      kind: 'patch',
+      itemId: 'i-1',
+      changes: { unit: 'g', quantity: 800, manualQuantity: 200 },
+    });
+  });
+
+  it('fixer un total dans une autre unité convertit la valeur, pas seulement l\'unité', () => {
+    const change = retotalItem(base, 1, 'kg');
+
+    expect(change.item.unit).toBe('g');
+    expect(change.item.quantity).toBe(1000);
+    // La recette apporte toujours ses 600 g : la part humaine est le reste.
+    expect(change.item.manualQuantity).toBe(400);
+  });
+
+  it('vider le total efface la seule part humaine', () => {
+    const withManual = { ...base, manualQuantity: 200, quantity: 800 };
+    const change = retotalItem(withManual, null, 'g');
+
+    expect(change.item.manualQuantity).toBeNull();
+    expect(change.item.quantity).toBe(600);
   });
 });
