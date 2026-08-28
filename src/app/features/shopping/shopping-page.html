@@ -1,0 +1,176 @@
+<div class="page">
+  <header class="head">
+    <div class="spread">
+      <div>
+        <h1>Liste de courses</h1>
+        @if (store.total() > 0) {
+          <p class="muted small">
+            {{ store.remaining() }} à prendre · {{ store.total() }} au total
+          </p>
+        }
+      </div>
+      @if (store.total() > 0) {
+        <button type="button" class="btn btn-ghost small-btn" (click)="confirmingClose.set(true)">
+          Terminer
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (store.error(); as message) {
+    <p class="error-banner">{{ message }}</p>
+  }
+
+  @if (store.loading()) {
+    <div class="skeletons" aria-hidden="true">
+      @for (row of [1, 2, 3, 4, 5]; track row) {
+        <div class="skeleton"></div>
+      }
+    </div>
+  } @else if (store.total() === 0) {
+    <div class="empty-state">
+      <span class="emoji" aria-hidden="true">🧺</span>
+      <h2>La liste est vide</h2>
+      <p>Ajoute ce qu'il te faut ci-dessous — de la carotte au papier toilette.<br />
+        Ou choisis des recettes dans l'onglet Semaine.</p>
+    </div>
+  } @else {
+    <div class="groups">
+      @for (group of store.groups(); track group.category.id) {
+        <section class="group">
+          <h2 class="group-title">
+            <span aria-hidden="true">{{ group.category.emoji }}</span>
+            {{ group.category.label }}
+          </h2>
+
+          <ul class="items">
+            @for (item of group.items; track item.id) {
+              <li class="item-wrap">
+                <span class="delete-hint" aria-hidden="true">Supprimer</span>
+                <div class="item" [class.checked]="item.checked" appSwipeToDelete (swiped)="store.remove(item)">
+                  <button
+                    type="button"
+                    class="tick"
+                    [attr.aria-pressed]="item.checked"
+                    [attr.aria-label]="(item.checked ? 'Décocher ' : 'Cocher ') + nameOf(item)"
+                    (click)="store.toggle(item)"
+                  >
+                    <span class="box">@if (item.checked) { ✓ }</span>
+                  </button>
+
+                  <button type="button" class="body" (click)="openEditor(item)">
+                    <span class="name">{{ nameOf(item) }}</span>
+                    <span class="meta">
+                      @if (quantityOf(item); as quantity) {
+                        <span class="quantity">{{ quantity }}</span>
+                      }
+                      <span class="origin">{{ originOf(item) }}</span>
+                      @if (item.note) {
+                        <span class="note">· {{ item.note }}</span>
+                      }
+                    </span>
+                  </button>
+                </div>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    </div>
+  }
+</div>
+
+<!-- Barre d'ajout : toujours à portée de pouce, et le champ garde le focus
+     pour enchaîner plusieurs articles d'affilée. -->
+<form class="quick-add" (submit)="submitDraft($event)">
+  @if (suggestions().length > 0) {
+    <ul class="suggestions">
+      @for (product of suggestions(); track product.id) {
+        <li>
+          <button type="button" (click)="addSuggestion(product.name)">
+            <span aria-hidden="true">{{ categoryEmoji(product.category) }}</span>
+            {{ product.name }}
+          </button>
+        </li>
+      }
+    </ul>
+  }
+
+  <div class="quick-add-row">
+    <input
+      #quickAdd
+      class="input"
+      type="text"
+      name="article"
+      autocomplete="off"
+      enterkeyhint="done"
+      placeholder="Ajouter un article…"
+      aria-label="Ajouter un article"
+      [value]="draft()"
+      (input)="draft.set(inputValue($event))"
+    />
+    <button type="submit" class="btn btn-primary add" [disabled]="draft().trim().length === 0" aria-label="Ajouter">
+      +
+    </button>
+  </div>
+</form>
+
+@if (editing(); as item) {
+  <app-sheet [title]="nameOf(item)" (closed)="editing.set(null)">
+    <div class="stack">
+      <div class="row">
+        <div class="field grow">
+          <label for="qty">Quantité</label>
+          <input id="qty" class="input" type="number" inputmode="decimal" min="0" step="any"
+                 [value]="editQuantity() ?? ''" (input)="editQuantity.set(numberValue($event))" />
+        </div>
+        <div class="field grow">
+          <label for="unit">Unité</label>
+          <select id="unit" class="input" [value]="editUnit() ?? ''" (change)="onUnitChange($event)">
+            <option value="">—</option>
+            @for (unit of units; track unit) {
+              <option [value]="unit">{{ unitLabel(unit) }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (item.sources.length > 0) {
+        <p class="small muted">
+          Cette quantité vient de {{ plural(item.sources.length, 'recette') }} de la semaine.
+          La modifier fixe un total : les recettes ajoutées ensuite s'additionneront par-dessus.
+        </p>
+      }
+
+      <div class="field">
+        <label for="note">Précision</label>
+        <input id="note" class="input" type="text" placeholder="Ex. : bio, en promo, marque…"
+               [value]="editNote()" (input)="editNote.set(inputValue($event))" />
+      </div>
+
+      <button type="button" class="btn btn-primary btn-block" (click)="saveEditor()">Enregistrer</button>
+      <button type="button" class="btn btn-danger btn-block" (click)="deleteFromEditor()">
+        Retirer de la liste
+      </button>
+    </div>
+  </app-sheet>
+}
+
+@if (confirmingClose()) {
+  <app-sheet title="Terminer les courses" (closed)="confirmingClose.set(false)">
+    <div class="stack">
+      <p class="muted">
+        La liste actuelle sera archivée et une liste vide s'ouvrira.
+        @if (store.remaining() > 0) {
+          <strong>Il reste {{ plural(store.remaining(), 'article') }}
+            {{ store.remaining() > 1 ? 'non cochés' : 'non coché' }}</strong> : ils seront archivés avec.
+        }
+      </p>
+      <p class="small muted">La semaine et ses recettes ne sont pas touchées.</p>
+      <button type="button" class="btn btn-primary btn-block" (click)="confirmClose()">
+        Archiver et repartir à zéro
+      </button>
+      <button type="button" class="btn btn-ghost btn-block" (click)="confirmingClose.set(false)">Annuler</button>
+    </div>
+  </app-sheet>
+}

@@ -1,0 +1,224 @@
+.page {
+  padding: var(--space-4) var(--space-4) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.head h1 {
+  font-size: 1.45rem;
+}
+
+.small-btn {
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Le fond rouge n'apparaît qu'à mesure que la ligne glisse au-dessus. */
+.item-wrap {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--danger);
+}
+
+.delete-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: var(--space-4);
+  color: var(--brand-contrast);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  touch-action: pan-y;
+}
+
+.item.checked {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+
+.item.checked .name {
+  text-decoration: line-through;
+  color: var(--text-faint);
+}
+
+.tick {
+  display: grid;
+  place-items: center;
+  width: var(--touch);
+  min-height: var(--touch);
+  border: none;
+  background: none;
+  flex-shrink: 0;
+}
+
+.tick .box {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--brand-contrast);
+  font-size: 0.85rem;
+  font-weight: 800;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.item.checked .tick .box {
+  background: var(--ok);
+  border-color: var(--ok);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: var(--space-2) var(--space-3) var(--space-2) 0;
+  min-height: var(--touch);
+  border: none;
+  background: none;
+  text-align: left;
+}
+
+.name {
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: 0.78rem;
+  color: var(--text-faint);
+}
+
+.quantity {
+  font-weight: 700;
+  color: var(--brand);
+}
+
+/* ── Barre d'ajout ─────────────────────────────────────── */
+
+.quick-add {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--tabbar-height) + env(safe-area-inset-bottom));
+  z-index: 25;
+  padding: var(--space-3) var(--space-4);
+  background: color-mix(in oklch, var(--bg) 92%, transparent);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+}
+
+.quick-add-row {
+  display: flex;
+  gap: var(--space-2);
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.quick-add .add {
+  width: var(--touch);
+  padding: 0;
+  font-size: 1.4rem;
+  font-weight: 400;
+  flex-shrink: 0;
+}
+
+.suggestions {
+  list-style: none;
+  display: flex;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: 0 0 var(--space-1);
+  max-width: 780px;
+  margin-inline: auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.suggestions::-webkit-scrollbar {
+  display: none;
+}
+
+.suggestions button {
+  white-space: nowrap;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* ── Divers ─────────────────────────────────────────────── */
+
+.grow {
+  flex: 1;
+}
+
+.skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.skeleton {
+  height: 56px;
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--surface-2), var(--surface), var(--surface-2));
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
