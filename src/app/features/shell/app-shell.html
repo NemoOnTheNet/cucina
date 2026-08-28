@@ -1,0 +1,28 @@
+<div class="shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/courses">
+      <span aria-hidden="true">🍅</span>
+      <span class="name">{{ session.household()?.name || 'Cucina' }}</span>
+    </a>
+    <a class="settings" routerLink="/foyer" aria-label="Foyer et réglages">⚙️</a>
+  </header>
+
+  <main class="content">
+    <router-outlet />
+  </main>
+
+  <nav class="tabbar" aria-label="Navigation principale">
+    <a routerLink="/courses" routerLinkActive="active" class="tab">
+      <span class="icon" aria-hidden="true">🧺</span>
+      <span class="label">Courses</span>
+    </a>
+    <a routerLink="/semaine" routerLinkActive="active" class="tab">
+      <span class="icon" aria-hidden="true">📅</span>
+      <span class="label">Semaine</span>
+    </a>
+    <a routerLink="/recettes" routerLinkActive="active" class="tab">
+      <span class="icon" aria-hidden="true">📖</span>
+      <span class="label">Recettes</span>
+    </a>
+  </nav>
+</div>
