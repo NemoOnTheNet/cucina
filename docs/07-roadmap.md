@@ -1,6 +1,6 @@
 # 07 — Feuille de route
 
-> **État au 26 août 2026** : M0 à M4 **livrés**, M5 livré pour la partie PWA. Détail à la fin du document.
+> **État au 28 août 2026** : M0 à M4 **livrés**, M5 livré pour la partie PWA. L'application est en production sur Supabase et Vercel. Détail à la fin du document.
 
 Des jalons, pas des dates. Chaque jalon se termine par un usage réel, jamais par « le code est écrit ».
 
@@ -66,16 +66,20 @@ PWA installable, cache hors ligne, build Android via Capacitor, icône, écran d
 | Jalon | État | Reste à faire |
 |---|---|---|
 | M0 — Fondations | ✅ | — |
-| M1 — Le foyer | ✅ | Vérifier depuis deux vrais téléphones, une fois Supabase branché |
+| M1 — Le foyer | ✅ | Vérifier l'isolation entre deux vrais comptes, jamais testée |
 | M2 — Liste de courses | ✅ | Faire de vraies courses avec |
 | M3 — Recettes | ✅ | Saisir les 10 recettes du foyer |
 | M4 — La semaine | ✅ | Planifier une vraie semaine |
 | M5 — Vraie app mobile | 🟡 | PWA installable ✅ · cache hors ligne ✅ · projet Android à générer (`npm run mobile:add:android`, demande le SDK) |
 
+Ce qui **bloque une ouverture au-delà du foyer** :
+
+- **Réinitialisation du mot de passe** : absente des deux backends. Aujourd'hui, un mot de passe oublié se règle depuis le tableau de bord Supabase — impensable pour quelqu'un d'autre que l'administrateur.
+- **Suppression de compte** : absente. Or `households.owner_id` est en `on delete cascade` : supprimer un utilisateur depuis le tableau de bord détruit son foyer entier. Il faut un vrai parcours, et une réponse à « que devient le foyer quand son gérant part ? ».
+
 Ce qui n'est **pas** fait, et qui est assumé :
 
 - **Écritures hors ligne** (L4.2) : l'app s'ouvre et se lit sans réseau, mais cocher un article demande la connexion dès que Supabase est branché. Chantier à part entière.
-- **Temps réel entre membres** (L1.10) : il faut recharger l'écran pour voir la modification d'un autre membre.
 - **Consultation des listes archivées** (L1.11) : les listes sont bien archivées, l'écran qui les affiche n'existe pas.
 - **Décocher des ingrédients avant l'envoi** (L3.6) : « j'ai déjà du riz » se corrige après coup, dans la liste.
 - **Appareil photo natif** (L5.3) : le champ fichier ouvre déjà l'appareil photo sur mobile ; le plugin Capacitor dédié n'est pas branché.
