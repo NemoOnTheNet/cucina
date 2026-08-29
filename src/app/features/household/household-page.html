@@ -47,10 +47,20 @@
         <ul class="invites card">
           @for (invite of store.invites(); track invite.id) {
             <li>
-              <span class="code">{{ invite.code }}</span>
-              <span class="small faint">{{ expiryLabel(invite) }}</span>
-              <button type="button" class="btn btn-quiet" (click)="copyCode(invite.code)">Copier</button>
-              <button type="button" class="btn btn-quiet" (click)="revoke(invite)" aria-label="Révoquer">✕</button>
+              <div class="invite-head">
+                <span class="code">{{ invite.code }}</span>
+                <span class="small faint">{{ expiryLabel(invite) }}</span>
+                <button type="button" class="btn btn-quiet" (click)="revoke(invite)"
+                        aria-label="Révoquer cette invitation">✕</button>
+              </div>
+              <div class="invite-actions">
+                <button type="button" class="btn btn-primary" (click)="shareInvite(invite.code)">
+                  Partager le lien
+                </button>
+                <button type="button" class="btn btn-quiet" (click)="copyCode(invite.code)">
+                  Copier le code
+                </button>
+              </div>
             </li>
           }
         </ul>
@@ -59,7 +69,10 @@
       <button type="button" class="btn btn-ghost btn-block" [disabled]="store.busy()" (click)="createInvite()">
         + Créer un code d'invitation
       </button>
-      <p class="small faint">Le code est valable 7 jours et ne sert qu'une fois.</p>
+      <p class="small faint">
+        Le lien amène directement sur l'écran « Rejoindre », code déjà rempli. Le code seul
+        se dicte au téléphone. Les deux valent 7 jours et ne servent qu'une fois.
+      </p>
     </section>
   }
 

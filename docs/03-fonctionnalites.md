@@ -13,12 +13,13 @@ Légende : **[V1]** = indispensable au premier usage réel · **[V1.1]** = juste
 | L0.1 | En tant que nouvel utilisateur, je crée un compte (e-mail + mot de passe) pour accéder à l'app. | V1 |
 | L0.2 | À ma première connexion, je crée un foyer et j'en deviens le gérant. | V1 |
 | L0.3 | En tant que gérant, je génère un lien/code d'invitation pour faire entrer un proche dans mon foyer. | V1 |
+| L0.3b | Je partage l'invitation par le partage natif du téléphone, ou je copie le code pour le dicter. | V1 |
 | L0.4 | En tant qu'invité, j'ouvre le lien, je crée mon compte et je rejoins directement le foyer. | V1 |
 | L0.5 | En tant que gérant, je vois la liste des membres et je peux en retirer un. | V1.1 |
 | L0.6 | Je reste connecté entre deux ouvertures de l'app. | V1 |
 | L0.7 | Connexion par lien magique (sans mot de passe). | Plus tard |
 
-**Critères d'acceptation L0.3/L0.4** : le code d'invitation expire après 7 jours ; un code déjà utilisé est refusé avec un message clair ; un utilisateur déjà membre d'un foyer qui ouvre une invitation est prévenu qu'il ne peut appartenir qu'à un seul foyer.
+**Critères d'acceptation L0.3/L0.4** : le code d'invitation expire après 7 jours ; un code déjà utilisé est refusé avec un message clair ; un utilisateur déjà membre d'un foyer qui ouvre une invitation est prévenu qu'il ne peut appartenir qu'à un seul foyer ; **le code du lien survit au détour par l'inscription et la confirmation d'adresse**, sans quoi le lien n'apporte rien de plus que le code recopié à la main.
 
 ---
 

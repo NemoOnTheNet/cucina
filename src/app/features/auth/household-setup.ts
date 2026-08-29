@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { SessionStore } from '../../core/auth/session.store';
 import { inputValue } from '../../shared/forms';
 import { INVITE_CODE_LENGTH, normalizeInviteCode } from '../../core/ids';
+import { forgetInvite, readInvite } from '../../core/auth/pending-invite';
 
 type Mode = 'create' | 'join';
 
@@ -54,10 +55,10 @@ type Mode = 'create' | 'join';
             <input id="code" class="input code" type="text" inputmode="text" autocapitalize="characters"
                    autocomplete="one-time-code" spellcheck="false"
                    [attr.maxlength]="codeLength" [placeholder]="codePlaceholder"
-                   [value]="code()" (input)="code.set(normalizeCode(inputValue($event)))" />
+                   [value]="draftCode()" (input)="draftCode.set(normalizeCode(inputValue($event)))" />
             <span class="small faint">Le gérant du foyer te l'a transmis. Il expire au bout de 7 jours.</span>
           </div>
-          <button type="submit" class="btn btn-primary btn-block" [disabled]="busy() || code().length < codeLength">
+          <button type="submit" class="btn btn-primary btn-block" [disabled]="busy() || draftCode().length < codeLength">
             {{ busy() ? 'Vérification…' : 'Rejoindre le foyer' }}
           </button>
         </form>
@@ -104,11 +105,14 @@ type Mode = 'create' | 'join';
   styleUrl: './auth-layout.css',
 })
 export class HouseholdSetup {
+  /** `?code=` du lien d'invitation, lié par `withComponentInputBinding()`. */
+  readonly code = input<string | undefined>(undefined);
+
   private readonly session = inject(SessionStore);
   private readonly router = inject(Router);
 
   protected readonly mode = signal<Mode>('create');
-  protected readonly code = signal('');
+  protected readonly draftCode = signal('');
   protected readonly codeLength = INVITE_CODE_LENGTH;
   /** Exemple de la bonne longueur, pour que le champ montre ce qu'il attend. */
   protected readonly codePlaceholder = 'BKMR47TQ'.slice(0, INVITE_CODE_LENGTH);
@@ -124,6 +128,17 @@ export class HouseholdSetup {
 
   protected readonly name = signal(this.suggestion());
 
+  constructor() {
+    // Le code peut arriver de deux endroits : le lien qu'on vient d'ouvrir, ou
+    // celui mis de côté avant le détour par l'inscription et la confirmation
+    // d'adresse. Dans les deux cas on bascule sur « Rejoindre » : quelqu'un qui
+    // ouvre une invitation ne cherche pas à créer un foyer.
+    const invited = normalizeInviteCode(this.code() ?? '') || readInvite();
+    if (!invited) return;
+    this.draftCode.set(invited);
+    this.mode.set('join');
+  }
+
   protected async create(event: Event): Promise<void> {
     event.preventDefault();
     await this.run(() => this.session.createHousehold(this.name()));
@@ -131,7 +146,10 @@ export class HouseholdSetup {
 
   protected async join(event: Event): Promise<void> {
     event.preventDefault();
-    await this.run(() => this.session.joinHousehold(this.code()));
+    await this.run(async () => {
+      await this.session.joinHousehold(this.draftCode());
+      forgetInvite();
+    });
   }
 
   protected async signOut(): Promise<void> {

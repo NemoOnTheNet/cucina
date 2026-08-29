@@ -59,13 +59,43 @@ export class HouseholdPage {
     }
   }
 
+  /**
+   * Lien qui amène directement sur l'écran « Rejoindre », code pré-rempli.
+   *
+   * Le code seul obligeait à basculer d'application, trouver l'écran et retaper
+   * huit caractères sans se tromper. Il reste affiché juste à côté : c'est lui
+   * qu'on dicte au téléphone, ou qu'on lit à quelqu'un qui est en face de soi.
+   */
+  protected inviteLink(code: string): string {
+    return `${location.origin}/bienvenue/foyer?code=${code}`;
+  }
+
+  /** Partage natif quand le téléphone le propose, presse-papier sinon. */
+  protected async shareInvite(code: string): Promise<void> {
+    const url = this.inviteLink(code);
+    const household = this.session.household()?.name ?? 'notre foyer';
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: 'Cucina', text: `Rejoins ${household} sur Cucina.`, url });
+        return;
+      } catch {
+        // Partage annulé, ou refusé par le navigateur : on retombe sur la copie.
+      }
+    }
+    await this.copyToClipboard(url, 'Lien copié.');
+  }
+
   protected async copyCode(code: string): Promise<void> {
+    await this.copyToClipboard(code, 'Code copié.');
+  }
+
+  private async copyToClipboard(value: string, done: string): Promise<void> {
     try {
-      await navigator.clipboard.writeText(code);
-      this.toasts.success('Code copié.');
+      await navigator.clipboard.writeText(value);
+      this.toasts.success(done);
     } catch {
-      // Le presse-papier peut être refusé : le code reste lisible à l'écran.
-      this.toasts.show(`Code : ${code}`);
+      // Le presse-papier peut être refusé : la valeur reste lisible à l'écran.
+      this.toasts.show(value);
     }
   }
 
