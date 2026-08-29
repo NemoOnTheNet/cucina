@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router';
 import { SessionStore } from '../../core/auth/session.store';
 import { inputValue } from '../../shared/forms';
+import { INVITE_CODE_LENGTH, normalizeInviteCode } from '../../core/ids';
 
 type Mode = 'create' | 'join';
 
@@ -51,11 +52,12 @@ type Mode = 'create' | 'join';
           <div class="field">
             <label for="code">Code d'invitation</label>
             <input id="code" class="input code" type="text" inputmode="text" autocapitalize="characters"
-                   maxlength="6" placeholder="ABC123"
-                   [value]="code()" (input)="code.set(inputValue($event).toUpperCase())" />
+                   autocomplete="one-time-code" spellcheck="false"
+                   [attr.maxlength]="codeLength" [placeholder]="codePlaceholder"
+                   [value]="code()" (input)="code.set(normalizeCode(inputValue($event)))" />
             <span class="small faint">Le gérant du foyer te l'a transmis. Il expire au bout de 7 jours.</span>
           </div>
-          <button type="submit" class="btn btn-primary btn-block" [disabled]="busy() || code().length < 6">
+          <button type="submit" class="btn btn-primary btn-block" [disabled]="busy() || code().length < codeLength">
             {{ busy() ? 'Vérification…' : 'Rejoindre le foyer' }}
           </button>
         </form>
@@ -107,6 +109,10 @@ export class HouseholdSetup {
 
   protected readonly mode = signal<Mode>('create');
   protected readonly code = signal('');
+  protected readonly codeLength = INVITE_CODE_LENGTH;
+  /** Exemple de la bonne longueur, pour que le champ montre ce qu'il attend. */
+  protected readonly codePlaceholder = 'BKMR47TQ'.slice(0, INVITE_CODE_LENGTH);
+  protected readonly normalizeCode = normalizeInviteCode;
   protected readonly busy = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly inputValue = inputValue;
